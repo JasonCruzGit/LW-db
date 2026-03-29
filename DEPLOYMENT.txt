@@ -40,38 +40,23 @@ LW-app production checklist
 
 Troubleshooting
 ---------------
-• The login message “API error — check DATABASE_URL / Supabase” is **correct** until this URL returns
-  `{"ok":true,"db":true}`:
-  https://YOUR-RAILWAY-URL/health/db
-  No frontend or CORS change fixes that; only a working Postgres connection does.
-
-• **“Circuit breaker open” from Supabase** means Supabase’s pooler will not forward to Postgres until the
-  upstream is healthy again. If this persists after correct URIs + password + project not paused:
-  open a ticket with Supabase, or stop using Supabase for this API’s database.
-
-• **Recommended fix when Supabase keeps failing from Railway — use Railway Postgres (same network):**
-  1) Railway → your project → **New** → **Database** → **PostgreSQL** (or add the Railway Postgres plugin).
-  2) **Connect** the database to your API service (Railway injects `DATABASE_URL` / `PG*` variables).
-  3) In the API service Variables, set **DATABASE_URL** and **DIRECT_URL** to the **same** Postgres URL
-     Railway gives (often `${{Postgres.DATABASE_URL}}` or copy from the Postgres service **Variables** tab).
-  4) On your machine: `cd /path/to/lw-app && npm run db:push && npm run db:seed` with that `DATABASE_URL`
-     in `server/.env` (or pass env inline).
-  5) Redeploy the API. `/health/db` → `db:true`. Then login works.
-
+• **“Tenant or user not found”** (from `/health/db` or Prisma): the Supabase **pooler** URL is wrong. You must use
+  the **exact** URI from Supabase → Connect → **Transaction pooler** (port **6543**). The username must look like
+  `postgres.<project-ref>`, not only `postgres`. Copy/paste the whole string and only replace `[YOUR-PASSWORD]`.
+  If you mix a **direct** username with a **pooler** host (or vice versa), login will always fail.
+• **“Circuit breaker open”**: Supabase pooler gave up reaching Postgres — resume project, reset DB password,
+  re-copy URIs, wait a few minutes, or use **Railway Postgres** (below) instead of Supabase for the API DB.
 • Vercel **500** on every route: almost always **Root Directory** not set to **`web`**. Fix in dashboard, then redeploy.
 • Vercel build failed with Prisma/tsc errors in `server/`: do not run `npm run build` from the monorepo root on Vercel — only **`web`** should be the app root.
+• Railway `/health` = 200 but `/health/db` shows “Circuit breaker open” or “upstream database”: the Supabase *pooler* cannot reach Postgres. In Supabase Dashboard, confirm the project is **not paused** (free tier). Then set Railway `DATABASE_URL` to the **Direct connection** string (host `db.<ref>.supabase.co:5432`), not the pooler — one Railway process can use a direct connection safely.
 • Vercel “Authentication Required” on some URLs: turn off **Deployment Protection** for Production (Project → Settings → Deployment Protection), or test on the primary production domain only.
 
-Local network (phone / other computers on Wi‑Fi)
------------------------------------------------
-1. Ensure `server/.env` has a working `DATABASE_URL` (Supabase or local Postgres).
-2. From the repo root run:
-     npm run dev:lan
-   API listens on **0.0.0.0:4000**, Next on **0.0.0.0:3000**.
-3. On your Mac, find your LAN IP: System Settings → Network → Wi‑Fi → Details → IP address
-   (or run: `ipconfig getifaddr en0`).
-4. On another device open: **http://YOUR_LAN_IP:3000** (e.g. `http://192.168.1.42:3000`).
-5. If the device cannot connect, allow **incoming** connections for Node in the macOS firewall for that run.
+Break glass (if Supabase keeps failing)
+---------------------------------------
+Add **PostgreSQL** in Railway (same project as the API), copy the **DATABASE_URL** Railway gives you, set both
+`DATABASE_URL` and `DIRECT_URL` to that value on the API service, redeploy, then from your laptop run
+`cd /path/to/lw-app && npm run db:push && npm run db:seed` with `DATABASE_URL` pointing at the same DB
+(Railway’s public URL or `railway connect`). Login works once `/health/db` returns `"db":true`.
 
 Notes
 - Do not commit server/.env.
