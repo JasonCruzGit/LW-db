@@ -40,9 +40,26 @@ LW-app production checklist
 
 Troubleshooting
 ---------------
+• The login message “API error — check DATABASE_URL / Supabase” is **correct** until this URL returns
+  `{"ok":true,"db":true}`:
+  https://YOUR-RAILWAY-URL/health/db
+  No frontend or CORS change fixes that; only a working Postgres connection does.
+
+• **“Circuit breaker open” from Supabase** means Supabase’s pooler will not forward to Postgres until the
+  upstream is healthy again. If this persists after correct URIs + password + project not paused:
+  open a ticket with Supabase, or stop using Supabase for this API’s database.
+
+• **Recommended fix when Supabase keeps failing from Railway — use Railway Postgres (same network):**
+  1) Railway → your project → **New** → **Database** → **PostgreSQL** (or add the Railway Postgres plugin).
+  2) **Connect** the database to your API service (Railway injects `DATABASE_URL` / `PG*` variables).
+  3) In the API service Variables, set **DATABASE_URL** and **DIRECT_URL** to the **same** Postgres URL
+     Railway gives (often `${{Postgres.DATABASE_URL}}` or copy from the Postgres service **Variables** tab).
+  4) On your machine: `cd /path/to/lw-app && npm run db:push && npm run db:seed` with that `DATABASE_URL`
+     in `server/.env` (or pass env inline).
+  5) Redeploy the API. `/health/db` → `db:true`. Then login works.
+
 • Vercel **500** on every route: almost always **Root Directory** not set to **`web`**. Fix in dashboard, then redeploy.
 • Vercel build failed with Prisma/tsc errors in `server/`: do not run `npm run build` from the monorepo root on Vercel — only **`web`** should be the app root.
-• Railway `/health` = 200 but `/health/db` shows “Circuit breaker open” or “upstream database”: the Supabase *pooler* cannot reach Postgres. In Supabase Dashboard, confirm the project is **not paused** (free tier). Then set Railway `DATABASE_URL` to the **Direct connection** string (host `db.<ref>.supabase.co:5432`), not the pooler — one Railway process can use a direct connection safely.
 • Vercel “Authentication Required” on some URLs: turn off **Deployment Protection** for Production (Project → Settings → Deployment Protection), or test on the primary production domain only.
 
 Notes
