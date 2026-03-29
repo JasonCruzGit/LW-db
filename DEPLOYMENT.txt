@@ -19,6 +19,9 @@ LW-app production checklist
    - Deploy from GitHub; Dockerfile.api at repo root; railway.toml points to it.
    - Variables: DATABASE_URL, DIRECT_URL, JWT_SECRET, NODE_ENV=production,
      WEB_ORIGIN=https://livingwordpnw.vercel.app
+   - If the browser calls the API directly (NEXT_PUBLIC_API_URL on Vercel), set **CORS_ALLOW_VERCEL_APP=1**
+     on Railway so any `https://*.vercel.app` origin is allowed, or list every frontend URL in WEB_ORIGIN
+     separated by commas. Easiest: remove NEXT_PUBLIC_API_URL and rely on Vercel’s `/api` rewrite (no CORS).
    - Prisma on Railway should use the **transaction pooler** (port **6543**). If DATABASE_URL uses the
      session pooler (`pooler.*:5432`), the server upgrades it to **6543** automatically.
    - If DATABASE_URL is the **direct** host (`db.<ref>.supabase.co:5432`) and still cannot connect, add

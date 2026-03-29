@@ -12,19 +12,27 @@ import metaRoutes from "./routes/meta.js";
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
 const WEB_ORIGIN = process.env.WEB_ORIGIN || "http://localhost:3000";
-const corsOrigins =
-  process.env.NODE_ENV === "production"
-    ? WEB_ORIGIN.split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : Array.from(
-        new Set([WEB_ORIGIN, "http://localhost:3000", "http://127.0.0.1:3000"])
-      );
+const corsAllowList = WEB_ORIGIN.split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function corsOriginAllowed(origin: string | undefined): boolean {
+  if (!origin) return true;
+  if (corsAllowList.includes(origin)) return true;
+  // Preview / legacy Vercel hostnames (e.g. web-two-jet-81.vercel.app) when using NEXT_PUBLIC_API_URL → Railway
+  if (process.env.CORS_ALLOW_VERCEL_APP === "1" && /^https:\/\/[a-zA-Z0-9.-]+\.vercel\.app$/.test(origin)) {
+    return true;
+  }
+  return false;
+}
 
 app.use(
   cors({
-    // In dev, reflect any request origin (localhost vs 127.0.0.1, file, alternate ports).
-    origin: process.env.NODE_ENV === "production" ? corsOrigins : true,
+    origin: (origin, callback) => {
+      if (process.env.NODE_ENV !== "production") return callback(null, true);
+      if (corsOriginAllowed(origin)) return callback(null, true);
+      callback(null, false);
+    },
     credentials: true,
   })
 );
