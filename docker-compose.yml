@@ -1,0 +1,14 @@
+# Database: use Supabase (PostgreSQL). Create a project at https://supabase.com
+# and copy connection strings into server/.env — see server/.env.example
+#
+# Optional local Postgres (uncomment if you need it without Supabase):
+#
+# services:
+#   postgres:
+#     image: postgres:16-alpine
+#     environment:
+#       POSTGRES_USER: worship
+#       POSTGRES_PASSWORD: worship_dev
+#       POSTGRES_DB: worship_team
+#     ports:
+#       - "5432:5432"

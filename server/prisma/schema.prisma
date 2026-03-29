@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  admin
+  song_leader
+  musician
+  singer
+}
+
+enum ChordSection {
+  verse
+  chorus
+  bridge
+  outro
+}
+
+enum InstrumentType {
+  guitar
+  bass
+  keys
+}
+
+enum LineupStatus {
+  draft
+  final
+  published
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         UserRole @default(musician)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  lineupsCreated Lineup[]       @relation("LineupCreator")
+  favorites      FavoriteSong[]
+}
+
+model Song {
+  id            String   @id @default(cuid())
+  title         String
+  artist        String
+  key           String
+  bpm           Int
+  timeSignature String?  @map("time_signature")
+  message       String?
+  lyrics        String?  @db.Text
+  tags          String[]
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  chordSheets ChordSheet[]
+  lineupSongs LineupSong[]
+  favorites   FavoriteSong[]
+}
+
+model ChordSheet {
+  id               String         @id @default(cuid())
+  songId           String         @map("song_id")
+  section          ChordSection
+  lyricsWithChords String         @map("lyrics_with_chords") @db.Text
+  instrumentType   InstrumentType @map("instrument_type")
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([songId])
+}
+
+model Lineup {
+  id             String       @id @default(cuid())
+  serviceDate    DateTime     @map("service_date") @db.Date
+  songLeaderName String?      @map("song_leader_name")
+  createdById    String       @map("created_by")
+  status         LineupStatus @default(draft)
+  publishedAt    DateTime?    @map("published_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  createdBy User           @relation("LineupCreator", fields: [createdById], references: [id])
+  songs     LineupSong[]
+
+  @@index([serviceDate])
+  @@index([status])
+}
+
+model LineupSong {
+  id           String @id @default(cuid())
+  lineupId     String @map("lineup_id")
+  songId       String @map("song_id")
+  order        Int
+  selectedKey  String @map("selected_key")
+  notes        String? @db.Text
+
+  lineup Lineup @relation(fields: [lineupId], references: [id], onDelete: Cascade)
+  song   Song   @relation(fields: [songId], references: [id])
+
+  @@unique([lineupId, order])
+  @@index([lineupId])
+}
+
+model FavoriteSong {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  songId    String   @map("song_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, songId])
+  @@index([userId])
+}

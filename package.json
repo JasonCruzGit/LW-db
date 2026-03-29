@@ -1,0 +1,19 @@
+{
+  "name": "worship-team-system",
+  "private": true,
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
+    "build": "npm run build --workspace=server && npm run build --workspace=web",
+    "db:generate": "npm run db:generate --workspace=server",
+    "db:push": "npm run db:push --workspace=server",
+    "db:seed": "npm run db:seed --workspace=server",
+    "lint": "npm run lint --workspace=web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
