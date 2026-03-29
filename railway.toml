@@ -1,0 +1,5 @@
+# Railway: new service from GitHub repo; root = this repo (not `server/` alone).
+# Uses monorepo lockfile + `server/` for `npm ci --workspace=server`.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.api"

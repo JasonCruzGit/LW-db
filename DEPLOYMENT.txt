@@ -1,0 +1,28 @@
+LW-app production checklist
+===========================
+
+1) Supabase (Postgres)
+   - Project Settings → Database: copy pooler URI for DATABASE_URL and direct URI for DIRECT_URL.
+   - Replace [YOUR-PASSWORD]; URL-encode special characters in the password if needed.
+
+2) One-time schema (from your machine, with server/.env filled in)
+   cd /path/to/lw-app && npm run db:push
+   If you see P1000 (auth failed), reset the DB password in Supabase and update server/.env.
+
+3) Railway (API)
+   - New project → Deploy from GitHub → select JasonCruzGit/LW-app.
+   - Use repo root (this file lives at root). Railway should pick up railway.toml + Dockerfile.api.
+   - Variables (same names as server/.env.example):
+     DATABASE_URL, DIRECT_URL, JWT_SECRET (long random), NODE_ENV=production,
+     WEB_ORIGIN=https://livingwordpnw.vercel.app (your real Vercel URL)
+   - Railway assigns HTTPS URL → that origin (no path) is your API base URL.
+   - Test: https://YOUR-RAILWAY-URL/health → {"ok":true}
+
+4) Vercel (web)
+   - Settings → Environment Variables → Production:
+     API_PROXY_TARGET=https://YOUR-RAILWAY-URL
+   - Redeploy production.
+
+Notes
+- Do not commit server/.env or real connection strings.
+- API Keys tab in Supabase is not used by this Express+Prisma stack; connection strings are enough.

@@ -7,7 +7,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.join(__dirname),
-  /** Proxy API in dev so the browser calls :3000 only (no cross-origin / Safari CORS quirks). */
+  /**
+   * Proxy `/api` to Express. Local default: `server` on :4000.
+   * On Vercel: set `API_PROXY_TARGET` to your deployed API origin (e.g. `https://xxx.railway.app`); no
+   * Express process runs on Vercel's localhost, so the default would break login with 404/502.
+   */
   async rewrites() {
     const target = process.env.API_PROXY_TARGET || "http://127.0.0.1:4000";
     return [{ source: "/api/:path*", destination: `${target}/api/:path*` }];
