@@ -25,12 +25,15 @@ LW-app production checklist
    If /health/db returns 503, DATABASE_URL/DIRECT_URL are wrong — fix in Railway Variables and redeploy.
 
 4) Vercel (web)
+   - **Critical — Root Directory:** Vercel → Project → Settings → General → Root Directory must be **`web`** (not the monorepo root). If it is `.` or empty, the app will build oddly or return **500** on every page because `next.config.ts` and `src/app` live under `web/`.
    - API_PROXY_TARGET=https://YOUR-RAILWAY-URL (no trailing path)
-   - Redeploy production.
+   - Optional: NEXT_PUBLIC_API_URL=https://YOUR-RAILWAY-URL (browser calls API directly; set WEB_ORIGIN on Railway to your Vercel URL)
+   - Redeploy production after changing Root Directory.
 
 Troubleshooting
 ---------------
-• Vercel build failed with Prisma/tsc errors in `server/`: the repo root must NOT run `tsc` on Vercel — only the Next app (`web/`) should build. Root `vercel.json` fixes this.
+• Vercel **500** on every route: almost always **Root Directory** not set to **`web`**. Fix in dashboard, then redeploy.
+• Vercel build failed with Prisma/tsc errors in `server/`: do not run `npm run build` from the monorepo root on Vercel — only **`web`** should be the app root.
 • Railway `/health` = 200 but `/health/db` shows “Circuit breaker open” or “upstream database”: the Supabase *pooler* cannot reach Postgres. In Supabase Dashboard, confirm the project is **not paused** (free tier). Then set Railway `DATABASE_URL` to the **Direct connection** string (host `db.<ref>.supabase.co:5432`), not the pooler — one Railway process can use a direct connection safely.
 • Vercel “Authentication Required” on some URLs: turn off **Deployment Protection** for Production (Project → Settings → Deployment Protection), or test on the primary production domain only.
 
