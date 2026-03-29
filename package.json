@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
+    "dev:lan": "concurrently \"npm run dev --workspace=server\" \"npm run dev:lan --workspace=web\"",
     "build": "npm run build --workspace=server && npm run build --workspace=web",
     "db:generate": "npm run db:generate --workspace=server",
     "db:push": "npm run db:push --workspace=server",

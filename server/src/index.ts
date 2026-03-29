@@ -11,6 +11,8 @@ import metaRoutes from "./routes/meta.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
+/** Bind address: `0.0.0.0` so other devices on your LAN can reach the API (set `HOST=127.0.0.1` to disable). */
+const HOST = process.env.HOST ?? "0.0.0.0";
 const WEB_ORIGIN = process.env.WEB_ORIGIN || "http://localhost:3000";
 const corsAllowList = WEB_ORIGIN.split(",")
   .map((s) => s.trim())
@@ -77,8 +79,8 @@ async function start() {
     console.error("WARN: Prisma could not connect at startup — check DATABASE_URL / DIRECT_URL.", e);
   }
 
-  app.listen(PORT, () => {
-    console.log(`Worship Team API listening on http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`Worship Team API listening on http://${HOST === "0.0.0.0" ? "0.0.0.0 (all interfaces)" : HOST}:${PORT}`);
   });
 }
 
