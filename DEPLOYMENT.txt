@@ -19,9 +19,11 @@ LW-app production checklist
    - Deploy from GitHub; Dockerfile.api at repo root; railway.toml points to it.
    - Variables: DATABASE_URL, DIRECT_URL, JWT_SECRET, NODE_ENV=production,
      WEB_ORIGIN=https://livingwordpnw.vercel.app
-   - If DATABASE_URL uses the Supabase *session* pooler (`pooler.*:5432`), the API will use DIRECT_URL
-     for Prisma at runtime (pooler is often unreachable from Railway). You must set DIRECT_URL to the
-     **Direct connection** string from Supabase (host `db.<ref>.supabase.co:5432`).
+   - Prisma on Railway should use the **transaction pooler** (port **6543**). If DATABASE_URL uses the
+     session pooler (`pooler.*:5432`), the server upgrades it to **6543** automatically.
+   - If DATABASE_URL is the **direct** host (`db.<ref>.supabase.co:5432`) and still cannot connect, add
+     **SUPABASE_POOLER_HOST** = the pooler hostname from Supabase Connect (e.g. `aws-1-ap-southeast-1.pooler.supabase.com`).
+   - Keep DIRECT_URL as the **Direct** string for `prisma db push` / migrations from your laptop.
    - After deploy, verify:
      https://YOUR-RAILWAY-URL/health     → {"ok":true}
      https://YOUR-RAILWAY-URL/health/db → {"ok":true,"db":true}
