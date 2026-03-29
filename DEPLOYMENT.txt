@@ -28,6 +28,12 @@ LW-app production checklist
    - API_PROXY_TARGET=https://YOUR-RAILWAY-URL (no trailing path)
    - Redeploy production.
 
+Troubleshooting
+---------------
+• Vercel build failed with Prisma/tsc errors in `server/`: the repo root must NOT run `tsc` on Vercel — only the Next app (`web/`) should build. Root `vercel.json` fixes this.
+• Railway `/health` = 200 but `/health/db` shows “Circuit breaker open” or “upstream database”: the Supabase *pooler* cannot reach Postgres. In Supabase Dashboard, confirm the project is **not paused** (free tier). Then set Railway `DATABASE_URL` to the **Direct connection** string (host `db.<ref>.supabase.co:5432`), not the pooler — one Railway process can use a direct connection safely.
+• Vercel “Authentication Required” on some URLs: turn off **Deployment Protection** for Production (Project → Settings → Deployment Protection), or test on the primary production domain only.
+
 Notes
 - Do not commit server/.env.
 - Supabase “API Keys” tab is not used by this Express+Prisma API.
