@@ -1,28 +1,33 @@
 LW-app production checklist
 ===========================
 
-1) Supabase (Postgres)
-   - Project Settings → Database: copy pooler URI for DATABASE_URL and direct URI for DIRECT_URL.
-   - Replace [YOUR-PASSWORD]; URL-encode special characters in the password if needed.
+1) Supabase — two connection strings (Project → Connect → Connection string)
 
-2) One-time schema (from your machine, with server/.env filled in)
+   DATABASE_URL — use the TRANSACTION pooler on port 6543 (not 5432):
+   postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+
+   DIRECT_URL — direct connection (migrations / Prisma):
+   postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+
+   The API code appends sslmode=require and (for :6543) pgbouncer=true + connection_limit=1 automatically.
+   If login still fails, switch DATABASE_URL to port 6543 — Prisma + Supabase session pooler :5432 is unreliable from some hosts.
+
+2) One-time schema (local machine, server/.env filled)
    cd /path/to/lw-app && npm run db:push
-   If you see P1000 (auth failed), reset the DB password in Supabase and update server/.env.
 
 3) Railway (API)
-   - New project → Deploy from GitHub → select JasonCruzGit/LW-app.
-   - Use repo root (this file lives at root). Railway should pick up railway.toml + Dockerfile.api.
-   - Variables (same names as server/.env.example):
-     DATABASE_URL, DIRECT_URL, JWT_SECRET (long random), NODE_ENV=production,
-     WEB_ORIGIN=https://livingwordpnw.vercel.app (your real Vercel URL)
-   - Railway assigns HTTPS URL → that origin (no path) is your API base URL.
-   - Test: https://YOUR-RAILWAY-URL/health → {"ok":true}
+   - Deploy from GitHub; Dockerfile.api at repo root; railway.toml points to it.
+   - Variables: DATABASE_URL, DIRECT_URL, JWT_SECRET, NODE_ENV=production,
+     WEB_ORIGIN=https://livingwordpnw.vercel.app
+   - After deploy, verify:
+     https://YOUR-RAILWAY-URL/health     → {"ok":true}
+     https://YOUR-RAILWAY-URL/health/db → {"ok":true,"db":true}
+   If /health/db returns 503, DATABASE_URL/DIRECT_URL are wrong — fix in Railway Variables and redeploy.
 
 4) Vercel (web)
-   - Settings → Environment Variables → Production:
-     API_PROXY_TARGET=https://YOUR-RAILWAY-URL
+   - API_PROXY_TARGET=https://YOUR-RAILWAY-URL (no trailing path)
    - Redeploy production.
 
 Notes
-- Do not commit server/.env or real connection strings.
-- API Keys tab in Supabase is not used by this Express+Prisma stack; connection strings are enough.
+- Do not commit server/.env.
+- Supabase “API Keys” tab is not used by this Express+Prisma API.

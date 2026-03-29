@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { prisma } from "./lib/prisma.js";
 import authRoutes from "./routes/auth.js";
 import usersRoutes from "./routes/users.js";
 import songsRoutes from "./routes/songs.js";
@@ -31,6 +32,21 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+/** Confirms Prisma can reach Postgres (use this when debugging Railway ↔ Supabase). */
+app.get("/health/db", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, db: true });
+  } catch (e) {
+    console.error("[health/db]", e);
+    res.status(503).json({
+      ok: false,
+      db: false,
+      error: e instanceof Error ? e.message : "Database unreachable",
+    });
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/songs", songsRoutes);
@@ -42,6 +58,18 @@ app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Worship Team API listening on http://localhost:${PORT}`);
-});
+async function start() {
+  try {
+    await prisma.$connect();
+    console.log("Prisma connected to database");
+  } catch (e) {
+    console.error("FATAL: Prisma could not connect — check DATABASE_URL / DIRECT_URL on the host.", e);
+    process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Worship Team API listening on http://localhost:${PORT}`);
+  });
+}
+
+void start();

@@ -1,19 +1,21 @@
 import { PrismaClient } from "@prisma/client";
+import { normalizeDatabaseUrl } from "./db-url.js";
 
-// Supabase (and many managed Postgres hosts) require SSL from external connections.
-// Append `sslmode=require` in production if not already present.
-function dbUrl(): string | undefined {
-  const url = process.env.DATABASE_URL;
-  if (!url || process.env.NODE_ENV !== "production") return url;
-  return url.includes("sslmode") ? url : url + (url.includes("?") ? "&" : "?") + "sslmode=require";
+// Prisma reads DATABASE_URL / DIRECT_URL from env; normalize before first Client init.
+if (process.env.DATABASE_URL) {
+  const n = normalizeDatabaseUrl(process.env.DATABASE_URL, "database");
+  if (n) process.env.DATABASE_URL = n;
+}
+if (process.env.DIRECT_URL) {
+  const n = normalizeDatabaseUrl(process.env.DIRECT_URL, "direct");
+  if (n) process.env.DIRECT_URL = n;
 }
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 export const prisma =
-  globalForPrisma.prisma ||
+  globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: { db: { url: dbUrl() } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
