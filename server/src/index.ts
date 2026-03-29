@@ -14,7 +14,9 @@ const PORT = Number(process.env.PORT) || 4000;
 const WEB_ORIGIN = process.env.WEB_ORIGIN || "http://localhost:3000";
 const corsOrigins =
   process.env.NODE_ENV === "production"
-    ? WEB_ORIGIN
+    ? WEB_ORIGIN.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
     : Array.from(
         new Set([WEB_ORIGIN, "http://localhost:3000", "http://127.0.0.1:3000"])
       );
@@ -63,8 +65,8 @@ async function start() {
     await prisma.$connect();
     console.log("Prisma connected to database");
   } catch (e) {
-    console.error("FATAL: Prisma could not connect — check DATABASE_URL / DIRECT_URL on the host.", e);
-    process.exit(1);
+    // Do not exit: Railway would return 502 and hide the app; /health/db surfaces DB errors.
+    console.error("WARN: Prisma could not connect at startup — check DATABASE_URL / DIRECT_URL.", e);
   }
 
   app.listen(PORT, () => {
