@@ -3,7 +3,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:lan": "next dev -H 0.0.0.0",
     "clean": "rm -rf .next",
     "build": "npm run clean && next build",
     "start": "next start",
