@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "clean": "rm -rf .next",
-    "build": "npm run clean && prisma generate && next build",
+    "build": "npm run clean && prisma generate && node scripts/fix-next-compiled.cjs && next build",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "start": "next start",
