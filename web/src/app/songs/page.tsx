@@ -157,21 +157,31 @@ function SongsInner() {
           <li key={s.id} className="flex items-stretch">
             <Link
               href={`/songs/${s.id}`}
-              className="flex min-w-0 flex-1 flex-col gap-1 px-4 py-4 hover:bg-zinc-50 sm:flex-row sm:items-center sm:justify-between dark:hover:bg-zinc-800/50"
+              className="grid min-w-0 flex-1 grid-cols-1 gap-3 px-4 py-4 hover:bg-zinc-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center dark:hover:bg-zinc-800/50"
             >
-              <div>
+              <div className="min-w-0">
                 <div className="font-semibold">{s.title}</div>
                 <div className="text-sm text-zinc-500">{s.artist}</div>
                 {s.message && <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{s.message}</div>}
               </div>
-              <div className="flex flex-wrap gap-2 text-sm">
-                <span className="rounded-md bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">{s.key}</span>
-                <span className="rounded-md bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">{s.bpm} BPM</span>
-                {s.tags.map((t) => (
-                  <span key={t} className="rounded-md border border-zinc-200 px-2 py-0.5 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-                    {t}
-                  </span>
-                ))}
+              <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-2 text-sm sm:items-center">
+                <span className="inline-flex w-10 justify-center rounded-md bg-zinc-100 px-2 py-0.5 font-medium tabular-nums dark:bg-zinc-800">
+                  {s.key}
+                </span>
+                <span className="inline-flex w-20 justify-center rounded-md bg-zinc-100 px-2 py-0.5 font-medium tabular-nums dark:bg-zinc-800">
+                  {s.bpm} BPM
+                </span>
+                <div className="flex min-w-0 flex-wrap justify-start gap-2 sm:justify-end">
+                  {s.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="max-w-[14rem] truncate rounded-md border border-zinc-200 px-2 py-0.5 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
+                      title={t}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </div>
             </Link>
             {user?.role === "admin" && (
