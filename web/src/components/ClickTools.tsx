@@ -24,6 +24,7 @@ export function ClickTools({
   const tapsRef = useRef<number[]>([]);
   const timerRef = useRef<number | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
+  const activeOscRef = useRef<Set<OscillatorNode>>(new Set());
 
   useEffect(() => {
     try {
@@ -58,6 +59,16 @@ export function ClickTools({
     g.gain.value = gain;
     o.connect(g);
     g.connect(ac.destination);
+    activeOscRef.current.add(o);
+    o.onended = () => {
+      activeOscRef.current.delete(o);
+      try {
+        o.disconnect();
+        g.disconnect();
+      } catch {
+        /* ignore */
+      }
+    };
     o.start(t);
     o.stop(t + 0.03);
   }
@@ -72,6 +83,21 @@ export function ClickTools({
   function stop() {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = null;
+    // Cancel any beeps already scheduled in the AudioContext timeline.
+    for (const o of activeOscRef.current) {
+      try {
+        o.onended = null;
+        o.stop(0);
+      } catch {
+        /* ignore */
+      }
+      try {
+        o.disconnect();
+      } catch {
+        /* ignore */
+      }
+    }
+    activeOscRef.current.clear();
     setRunning(false);
   }
 
