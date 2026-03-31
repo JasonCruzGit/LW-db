@@ -17,6 +17,7 @@ export function ClickTools({
 }) {
   const storageKey = `wts_song_click_${songId}`;
   const [bpm, setBpm] = useState<number>(() => initialBpm);
+  const [timeSig, setTimeSig] = useState<string>("4/4");
   const [countInBars, setCountInBars] = useState<number>(1);
   const [countInNote, setCountInNote] = useState<string>("");
   const [running, setRunning] = useState(false);
@@ -28,8 +29,9 @@ export function ClickTools({
     try {
       const raw = localStorage.getItem(storageKey);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as { bpm?: number; countInBars?: number; countInNote?: string };
+      const parsed = JSON.parse(raw) as { bpm?: number; timeSig?: string; countInBars?: number; countInNote?: string };
       if (typeof parsed.bpm === "number") setBpm(clamp(Math.round(parsed.bpm), 20, 300));
+      if (typeof parsed.timeSig === "string" && /^\d{1,2}\/\d{1,2}$/.test(parsed.timeSig)) setTimeSig(parsed.timeSig);
       if (typeof parsed.countInBars === "number") setCountInBars(clamp(Math.round(parsed.countInBars), 0, 8));
       if (typeof parsed.countInNote === "string") setCountInNote(parsed.countInNote);
     } catch {
@@ -40,11 +42,11 @@ export function ClickTools({
 
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ bpm, countInBars, countInNote }));
+      localStorage.setItem(storageKey, JSON.stringify({ bpm, timeSig, countInBars, countInNote }));
     } catch {
       /* ignore */
     }
-  }, [storageKey, bpm, countInBars, countInNote]);
+  }, [storageKey, bpm, timeSig, countInBars, countInNote]);
 
   const ms = useMemo(() => Math.round((60_000 / clamp(bpm, 20, 300)) * 1), [bpm]);
 
@@ -78,7 +80,8 @@ export function ClickTools({
     const ac = await ensureAudio();
     if (ac.state === "suspended") await ac.resume();
 
-    const beatsPerBar = 4; // simple default; we can evolve later
+    const m = /^(\d{1,2})\/(\d{1,2})$/.exec(timeSig.trim());
+    const beatsPerBar = clamp(m ? Number(m[1]) : 4, 1, 12);
     const totalCountInBeats = countInBars * beatsPerBar;
     let beat = 0;
 
@@ -176,6 +179,21 @@ export function ClickTools({
           />
         </label>
         <label className="block">
+          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Time signature</div>
+          <select
+            value={timeSig}
+            onChange={(e) => setTimeSig(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          >
+            <option value="4/4">4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="2/4">2/4</option>
+            <option value="6/8">6/8</option>
+            <option value="5/4">5/4</option>
+            <option value="7/8">7/8</option>
+          </select>
+        </label>
+        <label className="block">
           <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Count-in (bars)</div>
           <input
             type="number"
@@ -186,6 +204,8 @@ export function ClickTools({
             className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
           />
         </label>
+      </div>
+      <div className="mt-3">
         <label className="block">
           <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Count-in note</div>
           <input
