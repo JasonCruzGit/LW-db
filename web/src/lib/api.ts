@@ -57,6 +57,12 @@ export const api = {
       token: null,
     }),
 
+  demoLogin: () =>
+    request<{ token: string; user: import("./types").User }>("/api/auth/demo", {
+      method: "POST",
+      token: null,
+    }),
+
   me: () => request<import("./types").User>("/api/auth/me"),
 
   users: {
@@ -86,6 +92,28 @@ export const api = {
     update: (id: string, body: unknown) =>
       request<import("./types").Song>(`/api/songs/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     remove: (id: string) => request<void>(`/api/songs/${id}`, { method: "DELETE" }),
+    arrangements: {
+      list: (songId: string) => request<import("./types").SongArrangement[]>(`/api/songs/${songId}/arrangements`),
+      create: (songId: string, body: unknown) =>
+        request<import("./types").SongArrangement>(`/api/songs/${songId}/arrangements`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+      update: (arrangementId: string, body: unknown) =>
+        request<import("./types").SongArrangement>(`/api/arrangements/${arrangementId}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        }),
+      remove: (arrangementId: string) => request<void>(`/api/arrangements/${arrangementId}`, { method: "DELETE" }),
+    },
+    audioLinks: {
+      list: (songId: string) => request<import("./types").AudioLink[]>(`/api/songs/${songId}/audio-links`),
+      create: (songId: string, body: unknown) =>
+        request<import("./types").AudioLink>(`/api/songs/${songId}/audio-links`, { method: "POST", body: JSON.stringify(body) }),
+      update: (audioLinkId: string, body: unknown) =>
+        request<import("./types").AudioLink>(`/api/audio-links/${audioLinkId}`, { method: "PATCH", body: JSON.stringify(body) }),
+      remove: (audioLinkId: string) => request<void>(`/api/audio-links/${audioLinkId}`, { method: "DELETE" }),
+    },
   },
 
   lineups: {
@@ -116,5 +144,44 @@ export const api = {
     songFilters: () =>
       request<{ keys: string[]; tags: string[]; bpmMin: number; bpmMax: number }>("/api/meta/song-filters"),
     recentSongs: () => request<import("./types").Song[]>("/api/meta/recent-songs"),
+    tagSuggestions: (text: string, limit?: number) =>
+      request<{ suggestions: string[] }>("/api/meta/tag-suggestions", {
+        method: "POST",
+        body: JSON.stringify({ text, limit }),
+      }),
+  },
+
+  comments: {
+    list: (entityType: import("./types").CommentEntityType, entityId: string) =>
+      request<import("./types").Comment[]>(`/api/comments?entityType=${entityType}&entityId=${encodeURIComponent(entityId)}`),
+    create: (body: { entityType: import("./types").CommentEntityType; entityId: string; body: string }) =>
+      request<import("./types").Comment>("/api/comments", { method: "POST", body: JSON.stringify(body) }),
+  },
+
+  mentions: {
+    list: (opts?: { unread?: boolean }) =>
+      request<
+        Array<{
+          id: string;
+          readAt: string | null;
+          createdAt: string;
+          comment: import("./types").Comment;
+        }>
+      >(`/api/mentions${opts?.unread ? "?unread=true" : ""}`),
+    markAllRead: () => request<{ ok: boolean }>("/api/mentions", { method: "POST" }),
+  },
+
+  userSearch: (q: string) =>
+    request<Array<{ id: string; name: string | null; email: string }>>(`/api/users/search?q=${encodeURIComponent(q)}`),
+
+  songInstrumentNotes: {
+    list: (songId: string, instrument?: import("./types").InstrumentType) => {
+      const q = new URLSearchParams();
+      if (instrument) q.set("instrument", instrument);
+      const s = q.toString();
+      return request<import("./types").SongInstrumentNote[]>(`/api/songs/${songId}/instrument-notes${s ? `?${s}` : ""}`);
+    },
+    upsert: (songId: string, body: { instrument: import("./types").InstrumentType; body: string }) =>
+      request<import("./types").SongInstrumentNote>(`/api/songs/${songId}/instrument-notes`, { method: "PUT", body: JSON.stringify(body) }),
   },
 };

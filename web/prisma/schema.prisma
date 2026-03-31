@@ -26,6 +26,8 @@ enum InstrumentType {
   guitar
   bass
   keys
+  drums
+  vocals
 }
 
 enum LineupStatus {
@@ -34,16 +36,34 @@ enum LineupStatus {
   published
 }
 
+enum LineupAudience {
+  team_all
+  musicians_only
+}
+
+enum AudioPlatform {
+  youtube
+  spotify
+  other
+}
+
+enum CommentEntityType {
+  song
+  lineup
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String   @map("password_hash")
-  name         String
+  name         String?
   role         UserRole @default(musician)
   createdAt    DateTime @default(now()) @map("created_at")
 
   lineupsCreated Lineup[]       @relation("LineupCreator")
   favorites      FavoriteSong[]
+  comments       Comment[]
+  mentions       CommentMention[]
 }
 
 model Song {
@@ -59,6 +79,9 @@ model Song {
   createdAt     DateTime @default(now()) @map("created_at")
 
   chordSheets ChordSheet[]
+  arrangements SongArrangement[]
+  audioLinks   AudioLink[]
+  instrumentNotes SongInstrumentNote[]
   lineupSongs LineupSong[]
   favorites   FavoriteSong[]
 }
@@ -75,12 +98,60 @@ model ChordSheet {
   @@index([songId])
 }
 
+model SongArrangement {
+  id            String   @id @default(cuid())
+  songId        String   @map("song_id")
+  name          String
+  key           String
+  bpm           Int
+  timeSignature String?  @map("time_signature")
+  message       String?
+  lyrics        String?  @db.Text
+  structure     String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  song        Song                   @relation(fields: [songId], references: [id], onDelete: Cascade)
+  chordSheets ArrangementChordSheet[]
+
+  @@index([songId])
+}
+
+model ArrangementChordSheet {
+  id               String         @id @default(cuid())
+  arrangementId    String         @map("arrangement_id")
+  section          ChordSection
+  lyricsWithChords String         @map("lyrics_with_chords") @db.Text
+  instrumentType   InstrumentType @map("instrument_type")
+
+  arrangement SongArrangement @relation(fields: [arrangementId], references: [id], onDelete: Cascade)
+
+  @@index([arrangementId])
+}
+
+model AudioLink {
+  id        String        @id @default(cuid())
+  songId    String        @map("song_id")
+  platform  AudioPlatform
+  url       String
+  label     String?
+  notes     String?       @db.Text
+  timestamps Json?
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([songId])
+}
+
 model Lineup {
   id             String       @id @default(cuid())
   serviceDate    DateTime     @map("service_date") @db.Date
   songLeaderName String?      @map("song_leader_name")
+  changeNote     String?      @map("change_note") @db.Text
   createdById    String       @map("created_by")
   status         LineupStatus @default(draft)
+  audience       LineupAudience @default(team_all)
   publishedAt    DateTime?    @map("published_at")
   createdAt      DateTime     @default(now()) @map("created_at")
 
@@ -89,6 +160,21 @@ model Lineup {
 
   @@index([serviceDate])
   @@index([status])
+  @@index([audience])
+}
+
+model SongInstrumentNote {
+  id         String         @id @default(cuid())
+  songId     String         @map("song_id")
+  instrument InstrumentType
+  body       String         @db.Text
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([songId, instrument])
+  @@index([songId])
 }
 
 model LineupSong {
@@ -117,5 +203,36 @@ model FavoriteSong {
 
   @@unique([userId, songId])
   @@index([userId])
+}
+
+model Comment {
+  id         String            @id @default(cuid())
+  entityType CommentEntityType @map("entity_type")
+  entityId   String            @map("entity_id")
+  body       String            @db.Text
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  authorId String @map("author_id")
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  mentions CommentMention[]
+
+  @@index([entityType, entityId])
+  @@index([authorId])
+}
+
+model CommentMention {
+  id        String   @id @default(cuid())
+  commentId String   @map("comment_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@index([userId, readAt])
 }
 

@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ChordLines } from "@/components/ChordLines";
 import { LyricsOnly } from "@/components/LyricsOnly";
 import { Protected } from "@/components/Protected";
+import { CommentsPanel } from "@/components/CommentsPanel";
+import { InstrumentNotesPanel } from "@/components/InstrumentNotesPanel";
+import { ClickTools } from "@/components/ClickTools";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { showsChordCharts } from "@/lib/roles";
@@ -26,10 +29,15 @@ function ServiceInner() {
   const params = useParams();
   const id = String(params.id);
   const { user } = useAuth();
-  const charts = showsChordCharts(user?.role);
+  /** Service view: song leaders see lyrics only (like vocalists); musicians see charts; admins see both. */
+  const serviceCharts = showsChordCharts(user?.role) && user?.role !== "song_leader";
+  const canEditNotes = user?.role === "admin" || user?.role === "song_leader" || user?.role === "musician" || user?.role === "singer";
+  /** Musicians see chord charts only — not the full song lyrics block. */
+  const musicianChartsOnly = user?.role === "musician";
   const [lineup, setLineup] = useState<Lineup | null>(null);
   const [instrument, setInstrument] = useState<InstrumentType>("guitar");
   const [semi, setSemi] = useState(0);
+  const [songSemi, setSongSemi] = useState<Record<string, number>>({});
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +45,15 @@ function ServiceInner() {
     (async () => {
       try {
         const l = await api.lineups.get(id);
-        if (!cancelled) setLineup(l);
+        if (!cancelled) {
+          setLineup(l);
+          setSongSemi((prev) => {
+            // Ensure we only keep per-song transposes that still exist.
+            const next: Record<string, number> = {};
+            for (const ls of l.songs) next[ls.id] = prev[ls.id] ?? 0;
+            return next;
+          });
+        }
       } catch {
         if (!cancelled) setErr("Lineup not found.");
       }
@@ -89,13 +105,22 @@ function ServiceInner() {
         </div>
       </div>
 
-      {!charts && (
+      {!serviceCharts && (
         <p className="no-print rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200">
-          Vocal account — lyrics only for this service.
+          {user?.role === "song_leader"
+            ? "Song leader view — lyrics only. Musicians use chord charts on their account."
+            : "Vocal account — lyrics only for this service."}
         </p>
       )}
 
-      {charts && (
+      {lineup.changeNote?.trim() && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Service announcement</div>
+          <div className="mt-1 whitespace-pre-wrap">{lineup.changeNote}</div>
+        </div>
+      )}
+
+      {serviceCharts && (
         <div className="no-print flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Stage transpose</div>
@@ -127,9 +152,9 @@ function ServiceInner() {
         </div>
       )}
 
-      {charts && (
+      {serviceCharts && (
         <div className="no-print flex gap-2 border-b border-zinc-200 dark:border-zinc-800">
-          {(["guitar", "bass", "keys"] as InstrumentType[]).map((t) => (
+          {(["guitar", "bass", "keys", "drums", "vocals"] as InstrumentType[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -156,11 +181,22 @@ function ServiceInner() {
               song={ls.song}
               instrument={instrument}
               extraSemi={semi}
-              lyricsOnly={!charts}
+              songExtraSemi={songSemi[ls.id] ?? 0}
+              onSongExtraSemiChange={(next) =>
+                setSongSemi((m) => ({
+                  ...m,
+                  [ls.id]: next,
+                }))
+              }
+              canEditNotes={!!canEditNotes}
+              lyricsOnly={!serviceCharts}
+              hideLyrics={musicianChartsOnly}
             />
           </li>
         ))}
       </ol>
+
+      <CommentsPanel entityType="lineup" entityId={lineup.id} />
     </div>
   );
 }
@@ -172,7 +208,11 @@ function ServiceSongBlock({
   song,
   instrument,
   extraSemi,
+  songExtraSemi,
+  onSongExtraSemiChange,
+  canEditNotes,
   lyricsOnly,
+  hideLyrics,
 }: {
   index: number;
   selectedKey: string;
@@ -180,11 +220,16 @@ function ServiceSongBlock({
   song: Lineup["songs"][number]["song"];
   instrument: InstrumentType;
   extraSemi: number;
+  songExtraSemi: number;
+  onSongExtraSemiChange: (semi: number) => void;
+  canEditNotes: boolean;
   lyricsOnly: boolean;
+  /** When true (musicians), show chord charts only — omit full lyrics. */
+  hideLyrics: boolean;
 }) {
   const baseSemi = semitoneDeltaBetweenKeys(song.key, selectedKey);
-  const totalSemi = baseSemi + extraSemi;
-  const displayKey = lyricsOnly ? selectedKey : transposeChordSymbol(selectedKey, extraSemi);
+  const totalSemi = baseSemi + extraSemi + songExtraSemi;
+  const displayKey = lyricsOnly ? selectedKey : transposeChordSymbol(selectedKey, extraSemi + songExtraSemi);
 
   const sheets = (song.chordSheets || []).filter((c) => c.instrumentType === instrument);
   const grouped = useMemo(() => {
@@ -204,9 +249,42 @@ function ServiceSongBlock({
       <header className="border-b border-zinc-100 pb-4 dark:border-zinc-800">
         <div className="text-sm font-medium text-zinc-500">Song {index}</div>
         <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{song.title}</h2>
-        <div className="mt-3 flex flex-wrap gap-3 text-base sm:text-lg">
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-base sm:text-lg">
           <span className="rounded-md bg-zinc-100 px-3 py-1 font-mono dark:bg-zinc-800">Key: {displayKey}</span>
           <span className="rounded-md bg-zinc-100 px-3 py-1 font-mono dark:bg-zinc-800">{song.bpm} BPM</span>
+          {!lyricsOnly && (
+            <div className="no-print flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Song transpose</span>
+              <div className="flex items-center overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-600">
+                <button
+                  type="button"
+                  className="px-3 py-1 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  onClick={() => onSongExtraSemiChange(songExtraSemi - 1)}
+                  aria-label="Transpose this song down one semitone"
+                >
+                  −1
+                </button>
+                <div className="min-w-10 border-x border-zinc-300 px-2 py-1 text-center text-sm font-medium tabular-nums dark:border-zinc-600">
+                  {songExtraSemi}
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-1 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  onClick={() => onSongExtraSemiChange(songExtraSemi + 1)}
+                  aria-label="Transpose this song up one semitone"
+                >
+                  +1
+                </button>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg border border-zinc-300 px-3 py-1 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                onClick={() => onSongExtraSemiChange(0)}
+              >
+                Reset
+              </button>
+            </div>
+          )}
         </div>
         {notes && (
           <p className="mt-3 rounded-lg bg-amber-50 p-3 text-base text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
@@ -214,6 +292,19 @@ function ServiceSongBlock({
           </p>
         )}
       </header>
+      <div className="mt-4 no-print">
+        <InstrumentNotesPanel
+          songId={song.id}
+          instrument={instrument}
+          canEdit={canEditNotes}
+          compact
+        />
+      </div>
+      {!lyricsOnly && (
+        <div className="mt-4 no-print">
+          <ClickTools songId={song.id} initialBpm={song.bpm} compact />
+        </div>
+      )}
       {lyricsOnly && (
         <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Lyrics</h3>
@@ -224,7 +315,7 @@ function ServiceSongBlock({
           )}
         </section>
       )}
-      {!lyricsOnly && song.lyrics?.trim() && (
+      {!lyricsOnly && !hideLyrics && song.lyrics?.trim() && (
         <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Lyrics</h3>
           <ChordLines

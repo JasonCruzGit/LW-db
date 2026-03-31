@@ -14,15 +14,23 @@ const lineupSongInput = z.object({
 const createLineupSchema = z.object({
   serviceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   songLeaderName: z.string().max(200).optional().nullable(),
+  changeNote: z.string().max(10000).optional().nullable(),
   status: z.enum(["draft", "final", "published"]).optional(),
+  audience: z.enum(["team_all", "musicians_only"]).optional(),
   songs: z.array(lineupSongInput),
 });
 
 function canManageLineup(role: string) {
-  return role === "admin" || role === "song_leader";
+  return role === "admin" || role === "song_leader" || role === "musician" || role === "singer";
 }
 function memberSeesPublishedOnly(role: string) {
   return role === "musician" || role === "singer";
+}
+
+function audienceFilterForRole(role: string): Prisma.LineupWhereInput | undefined {
+  if (role === "singer") return { audience: "team_all" };
+  if (role === "musician") return { audience: { in: ["team_all", "musicians_only"] } };
+  return undefined;
 }
 
 export async function GET(req: NextRequest) {
@@ -40,6 +48,8 @@ export async function GET(req: NextRequest) {
   if (serviceDate) {
     where.serviceDate = new Date(serviceDate + "T12:00:00.000Z");
     if (memberSeesPublishedOnly(role)) where.status = "published";
+    const aud = audienceFilterForRole(role);
+    if (aud) Object.assign(where, aud);
   } else if (draftsOnly && (role === "admin" || role === "song_leader")) {
     where.status = "draft";
     if (role === "song_leader") where.createdById = auth.sub;
@@ -48,15 +58,20 @@ export async function GET(req: NextRequest) {
     start.setHours(0, 0, 0, 0);
     where.serviceDate = { gte: start };
     where.status = "published";
+    where.audience = "team_all";
   } else if (history) {
     where.status = "published";
+    const aud = audienceFilterForRole(role);
+    if (aud) Object.assign(where, aud);
   } else {
     if (memberSeesPublishedOnly(role)) {
       where.status = "published";
+      const aud = audienceFilterForRole(role);
+      if (aud) Object.assign(where, aud);
     } else {
       where.OR = [
-        { status: "published" },
-        { status: "final" },
+        { status: "published", audience: "team_all" },
+        { status: "final", audience: "team_all" },
         { createdById: auth.sub, status: "draft" },
         ...(role === "admin" ? [{ status: "draft" as const }] : []),
       ];
@@ -87,16 +102,24 @@ export async function POST(req: NextRequest) {
   const parsed = createLineupSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { serviceDate, songLeaderName, status, songs } = parsed.data;
+  const { serviceDate, songLeaderName, changeNote, status, songs, audience } = parsed.data;
   const date = new Date(serviceDate + "T12:00:00.000Z");
   const leader = songLeaderName?.trim() || null;
+  const note = changeNote?.trim() || null;
+
+  const aud =
+    auth.role === "musician"
+      ? "musicians_only"
+      : audience ?? "team_all";
 
   const lineup = await prisma.lineup.create({
     data: {
       serviceDate: date,
       songLeaderName: leader,
+      changeNote: note,
       createdById: auth.sub,
       status: status ?? "draft",
+      audience: aud,
       publishedAt: status === "published" ? new Date() : null,
       songs: {
         create: songs.map((s) => ({

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/server/prisma";
 import { requireAuth } from "@/lib/server/auth";
 
 function canManageLineup(role: string) {
-  return role === "admin" || role === "song_leader";
+  return role === "admin" || role === "song_leader" || role === "musician" || role === "singer";
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

@@ -9,10 +9,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "1";
 
   useEffect(() => {
     if (!loading && user) window.location.assign("/");
   }, [loading, user]);
+
+  useEffect(() => {
+    if (authDisabled) window.location.assign("/");
+  }, [authDisabled]);
+
+  if (authDisabled) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <p className="text-zinc-500">Redirecting…</p>
+      </div>
+    );
+  }
 
   if (loading || user) {
     return (

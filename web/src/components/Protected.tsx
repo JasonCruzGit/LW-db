@@ -14,10 +14,11 @@ export function Protected({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "1";
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
+    if (!authDisabled && !loading && !user) router.replace("/login");
+  }, [authDisabled, loading, user, router]);
 
   useEffect(() => {
     if (!loading && user && roles && !roles.includes(user.role)) {

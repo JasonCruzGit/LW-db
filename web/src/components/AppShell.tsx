@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import clsx from "clsx";
+import { api } from "@/lib/api";
+import { useState } from "react";
 
 function ThemeToggle() {
   return (
     <button
       type="button"
+      data-tour="toggle-theme"
       className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
       onClick={() => {
         document.documentElement.classList.toggle("dark");
@@ -28,6 +31,7 @@ function ThemeToggle() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const [unreadMentions, setUnreadMentions] = useState<number>(0);
 
   useEffect(() => {
     const stored = localStorage.getItem("wts_theme");
@@ -35,16 +39,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (stored === "light") document.documentElement.classList.remove("dark");
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    (async () => {
+      try {
+        const list = await api.mentions.list({ unread: true });
+        if (!cancelled) setUnreadMentions(list.length);
+      } catch {
+        /* ignore */
+      }
+    })();
+    const t = window.setInterval(() => {
+      api.mentions
+        .list({ unread: true })
+        .then((list) => setUnreadMentions(list.length))
+        .catch(() => {});
+    }, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [user]);
+
   const links = [
-    { href: "/", label: "Dashboard" },
-    { href: "/songs", label: "Songs" },
-    ...(user && (user.role === "admin" || user.role === "song_leader")
-      ? [{ href: "/lineups/new", label: "New lineup" }]
+    { href: "/", label: "Dashboard", tour: "nav-dashboard" },
+    { href: "/songs", label: "Songs", tour: "nav-songs" },
+    ...(user && (user.role === "admin" || user.role === "song_leader" || user.role === "singer")
+      ? [{ href: "/lineups/new", label: "New lineup", tour: "nav-new-lineup" }]
       : []),
+    ...(user?.role === "musician"
+      ? [{ href: "/musician-setlists/new", label: "New setlist", tour: "nav-musician-setlist" }]
+      : []),
+    ...(user ? [{ href: "/mentions", label: "Mentions", tour: "nav-mentions" }] : []),
     ...(user?.role === "admin"
       ? [
-          { href: "/admin/songs/new", label: "Add song" },
-          { href: "/admin/users", label: "Users" },
+          { href: "/admin/songs/new", label: "Add song", tour: "nav-add-song" },
+          { href: "/admin/users", label: "Users", tour: "nav-users" },
         ]
       : []),
   ];
@@ -61,6 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={l.href}
                 href={l.href}
+                data-tour={l.tour}
                 className={clsx(
                   "rounded-md px-3 py-1.5 text-sm font-medium",
                   pathname === l.href
@@ -68,17 +100,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
                 )}
               >
-                {l.label}
+                <span className="inline-flex items-center gap-2">
+                  {l.label}
+                  {l.href === "/mentions" && unreadMentions > 0 && (
+                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+                      {unreadMentions}
+                    </span>
+                  )}
+                </span>
               </Link>
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            {user && (
+              <button
+                type="button"
+                data-tour="tour-help"
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                onClick={() => window.dispatchEvent(new Event("wts:start-tour"))}
+              >
+                Tour
+              </button>
+            )}
             <ThemeToggle />
             {user ? (
               <>
-                <span className="hidden text-sm text-zinc-500 sm:inline">{user.name}</span>
+                <span className="hidden text-sm text-zinc-500 sm:inline">{user.name || user.email}</span>
                 <button
                   type="button"
+                  data-tour="logout"
                   className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-700"
                   onClick={() => logout()}
                 >
@@ -102,6 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={l.href}
               href={l.href}
+              data-tour={l.tour}
               className={clsx(
                 "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium",
                 pathname === l.href
@@ -109,7 +160,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   : "text-zinc-600 dark:text-zinc-400"
               )}
             >
-              {l.label}
+              <span className="inline-flex items-center gap-2">
+                {l.label}
+                {l.href === "/mentions" && unreadMentions > 0 && (
+                  <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    {unreadMentions}
+                  </span>
+                )}
+              </span>
             </Link>
           ))}
         </div>

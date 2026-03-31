@@ -25,13 +25,28 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const authDisabled = process.env.NEXT_PUBLIC_AUTH_DISABLED === "1";
 
   const refresh = useCallback(async () => {
     const t = getToken();
     if (!t) {
-      setUser(null);
-      setLoading(false);
-      return;
+      if (authDisabled) {
+        try {
+          const { token, user: u } = await api.demoLogin();
+          setToken(token);
+          setUser(u);
+        } catch {
+          setToken(null);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      } else {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
     }
     try {
       const me = await api.me();
@@ -42,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authDisabled]);
 
   useEffect(() => {
     void refresh();

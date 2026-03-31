@@ -15,6 +15,13 @@ export default function SongsPage() {
   );
 }
 
+function audioLabel(platform?: string | null) {
+  if (!platform) return "Audio";
+  if (platform === "youtube") return "YouTube";
+  if (platform === "spotify") return "Spotify";
+  return "Audio";
+}
+
 function SongsInner() {
   const { user } = useAuth();
   const [songs, setSongs] = useState<Song[]>([]);
@@ -84,7 +91,10 @@ function SongsInner() {
 
       {err && <p className="text-sm text-red-600">{err}</p>}
 
-      <div className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        data-tour="songs-filters"
+        className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-4"
+      >
         <label className="text-xs font-medium uppercase text-zinc-500">
           Search
           <input
@@ -152,7 +162,10 @@ function SongsInner() {
         </label>
       </div>
 
-      <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+      <ul
+        data-tour="songs-list"
+        className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900"
+      >
         {songs.map((s) => (
           <li key={s.id} className="flex items-stretch">
             <Link
@@ -172,6 +185,18 @@ function SongsInner() {
                   {s.bpm} BPM
                 </span>
                 <div className="flex min-w-0 flex-wrap justify-start gap-2 sm:justify-end">
+                  {s.audioLinks?.[0]?.url && (
+                    <a
+                      href={s.audioLinks[0].url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                      title={s.audioLinks[0].label || s.audioLinks[0].url}
+                    >
+                      {audioLabel((s.audioLinks[0] as any).platform)}
+                    </a>
+                  )}
                   {s.tags.map((t) => (
                     <span
                       key={t}

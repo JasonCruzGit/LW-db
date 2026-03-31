@@ -14,7 +14,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LW Worship Team App",
+  title: "LW Worship Team Database",
   description: "Song library, lineups, and chord charts for worship teams",
   manifest: "/manifest.json",
   icons: {

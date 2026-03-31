@@ -7,7 +7,7 @@ import { requireAuth, requireRole } from "@/lib/server/auth";
 const chordSheetInput = z.object({
   section: z.enum(["verse", "chorus", "bridge", "outro"]),
   lyricsWithChords: z.string(),
-  instrumentType: z.enum(["guitar", "bass", "keys"]),
+  instrumentType: z.enum(["guitar", "bass", "keys", "drums", "vocals"]),
 });
 
 const createSongSchema = z.object({
@@ -65,7 +65,10 @@ export async function GET(req: NextRequest) {
   const songs = await prisma.song.findMany({
     where,
     orderBy,
-    include: { chordSheets: { orderBy: [{ section: "asc" }, { instrumentType: "asc" }] } },
+    include: {
+      chordSheets: { orderBy: [{ section: "asc" }, { instrumentType: "asc" }] },
+      audioLinks: { take: 1, orderBy: { createdAt: "desc" } },
+    },
   });
   return NextResponse.json(songs);
 }

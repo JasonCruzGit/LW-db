@@ -9,6 +9,7 @@ import type { Lineup, Song } from "@/lib/types";
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [upcoming, setUpcoming] = useState<Lineup[]>([]);
+  const [musicianOnly, setMusicianOnly] = useState<Lineup[]>([]);
   const [recent, setRecent] = useState<Song[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
@@ -19,13 +20,19 @@ export default function DashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [u, r] = await Promise.all([
+        const [u, r, m] = await Promise.all([
           api.lineups.list({ upcoming: "true" }),
           api.meta.recentSongs(),
+          user.role === "musician" ? api.lineups.list({ history: "true" }) : Promise.resolve([] as Lineup[]),
         ]);
         if (!cancelled) {
           setUpcoming(u);
           setRecent(r);
+          if (user.role === "musician") {
+            setMusicianOnly(
+              m.filter((x) => (x as any).audience === "musicians_only" && x.status === "published").slice(0, 5)
+            );
+          }
         }
       } catch (e) {
         if (!cancelled) setErr("Could not load dashboard data.");
@@ -100,7 +107,7 @@ export default function DashboardPage() {
       {err && <p className="text-sm text-red-600">{err}</p>}
       {deleteErr && <p className="text-sm text-red-600">{deleteErr}</p>}
 
-      <section>
+      <section data-tour="dashboard-upcoming">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Upcoming lineup</h2>
         <p className="mt-1 text-xs text-zinc-500">
           Published upcoming services can only be removed by an admin. Song leaders can open{" "}
@@ -128,6 +135,11 @@ export default function DashboardPage() {
                   })}
                 </div>
                 <div className="mt-1 font-semibold">{l.songs.length} songs</div>
+                {l.songLeaderName && (
+                  <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    Song leader: <span className="font-medium">{l.songLeaderName}</span>
+                  </div>
+                )}
                 <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Open service view →</div>
               </Link>
               {(user.role === "admin" || user.role === "song_leader") && (
@@ -155,7 +167,40 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section>
+      {user.role === "musician" && (
+        <section>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Musician setlists</h2>
+            <Link href="/musician-setlists/new" className="text-sm font-medium text-zinc-900 underline dark:text-white">
+              New
+            </Link>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">Posted musician setlists are only visible to musicians.</p>
+          <ul className="mt-3 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+            {musicianOnly.length === 0 && (
+              <li className="px-4 py-3 text-sm text-zinc-500">No musician-only setlists yet.</li>
+            )}
+            {musicianOnly.map((l) => (
+              <li key={l.id}>
+                <Link
+                  href={`/service/${l.id}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                >
+                  <span className="min-w-0">
+                    <span className="block font-medium">
+                      {new Date(l.serviceDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                    </span>
+                    <span className="block text-sm text-zinc-500">{l.songs.length} songs</span>
+                  </span>
+                  <span className="text-sm text-zinc-500">Open →</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section data-tour="dashboard-recent">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Recently used</h2>
           <Link href="/songs" className="text-sm font-medium text-zinc-900 underline dark:text-white">

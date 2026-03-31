@@ -7,6 +7,7 @@ import { LineupEditor, songToRow, type LineupRow } from "@/components/LineupEdit
 import { Protected } from "@/components/Protected";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
+import { CommentsPanel } from "@/components/CommentsPanel";
 import type { Lineup, Song } from "@/lib/types";
 
 export default function LineupDetailPage() {
@@ -25,11 +26,13 @@ function LineupDetailInner() {
   const [lineup, setLineup] = useState<Lineup | null>(null);
   const [serviceDate, setServiceDate] = useState("");
   const [songLeaderName, setSongLeaderName] = useState("");
+  const [changeNote, setChangeNote] = useState("");
   const [rows, setRows] = useState<LineupRow[]>([]);
   const [catalog, setCatalog] = useState<Song[]>([]);
   const [pick, setPick] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const canEdit =
     user &&
@@ -55,6 +58,7 @@ function LineupDetailInner() {
         setLineup(l);
         setServiceDate(l.serviceDate.slice(0, 10));
         setSongLeaderName(l.songLeaderName ?? "");
+        setChangeNote(l.changeNote ?? "");
         setRows(
           l.songs.map((ls) => ({
             songId: ls.song.id,
@@ -76,9 +80,16 @@ function LineupDetailInner() {
 
   function addSong() {
     const s = catalog.find((x) => x.id === pick);
-    if (!s || rows.some((r) => r.songId === s.id)) return;
+    if (!s) return;
+    if (rows.some((r) => r.songId === s.id)) {
+      setToast("Already added.");
+      window.setTimeout(() => setToast(null), 1400);
+      return;
+    }
     setRows([...rows, songToRow(s)]);
     setPick("");
+    setToast(`Added “${s.title}”.`);
+    window.setTimeout(() => setToast(null), 1400);
   }
 
   async function save(status?: "draft" | "final" | "published") {
@@ -90,6 +101,7 @@ function LineupDetailInner() {
       const updated = await api.lineups.update(lineup.id, {
         serviceDate,
         songLeaderName: songLeaderName.trim() || null,
+        changeNote: changeNote.trim() || null,
         status: nextStatus,
         songs: rows.map((r, order) => ({
           songId: r.songId,
@@ -147,6 +159,11 @@ function LineupDetailInner() {
 
   return (
     <div className="space-y-8">
+      {toast && (
+        <div className="no-print fixed bottom-4 right-4 z-50 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-lg dark:bg-white dark:text-zinc-900">
+          {toast}
+        </div>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link href="/" className="text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">
@@ -219,6 +236,8 @@ function LineupDetailInner() {
           onServiceDateChange={setServiceDate}
           songLeaderName={songLeaderName}
           onSongLeaderNameChange={setSongLeaderName}
+          changeNote={changeNote}
+          onChangeNoteChange={setChangeNote}
           rows={rows}
           onRowsChange={setRows}
           songPicker={
@@ -271,6 +290,8 @@ function LineupDetailInner() {
           </ol>
         </div>
       )}
+
+      <CommentsPanel entityType="lineup" entityId={lineup.id} />
     </div>
   );
 }

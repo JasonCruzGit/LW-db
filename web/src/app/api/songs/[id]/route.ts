@@ -6,7 +6,7 @@ import { requireAuth, requireRole } from "@/lib/server/auth";
 const chordSheetInput = z.object({
   section: z.enum(["verse", "chorus", "bridge", "outro"]),
   lyricsWithChords: z.string(),
-  instrumentType: z.enum(["guitar", "bass", "keys"]),
+  instrumentType: z.enum(["guitar", "bass", "keys", "drums", "vocals"]),
 });
 
 const updateSongSchema = z
@@ -29,7 +29,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const song = await prisma.song.findUnique({
     where: { id },
-    include: { chordSheets: { orderBy: [{ section: "asc" }, { instrumentType: "asc" }] } },
+    include: {
+      chordSheets: { orderBy: [{ section: "asc" }, { instrumentType: "asc" }] },
+      arrangements: { include: { chordSheets: { orderBy: [{ section: "asc" }, { instrumentType: "asc" }] } } },
+      audioLinks: { orderBy: { createdAt: "desc" } },
+    },
   });
   if (!song) return NextResponse.json({ error: "Song not found" }, { status: 404 });
   return NextResponse.json(song);

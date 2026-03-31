@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ChordSection, InstrumentType, Song } from "@/lib/types";
 
 const SECTIONS: ChordSection[] = ["verse", "chorus", "bridge", "outro"];
-const INSTRUMENTS: InstrumentType[] = ["guitar", "bass", "keys"];
+const INSTRUMENTS: InstrumentType[] = ["guitar", "bass", "keys", "drums", "vocals"];
 
 export type SongFormState = {
   title: string;

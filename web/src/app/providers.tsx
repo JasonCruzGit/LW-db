@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AuthProvider } from "@/contexts/auth-context";
 import { AppShell } from "@/components/AppShell";
+import { TourProvider } from "@/components/TourProvider";
 
 /** Login is rendered without AppShell so its tree stays minimal (fewer RSC/HMR edge cases). */
 function RouteShell({ children }: { children: React.ReactNode }) {
@@ -16,7 +17,9 @@ function RouteShell({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <RouteShell>{children}</RouteShell>
+      <TourProvider>
+        <RouteShell>{children}</RouteShell>
+      </TourProvider>
     </AuthProvider>
   );
 }

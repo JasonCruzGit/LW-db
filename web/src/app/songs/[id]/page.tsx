@@ -8,6 +8,9 @@ import { Protected } from "@/components/Protected";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { LyricsOnly } from "@/components/LyricsOnly";
+import { CommentsPanel } from "@/components/CommentsPanel";
+import { InstrumentNotesPanel } from "@/components/InstrumentNotesPanel";
+import { ClickTools } from "@/components/ClickTools";
 import { transposeChordSymbol, transposeLyricsWithChords } from "@/lib/chords";
 import { showsChordCharts } from "@/lib/roles";
 import type { ChordSection, InstrumentType, Song } from "@/lib/types";
@@ -27,6 +30,7 @@ function SongDetailInner() {
   const id = String(params.id);
   const { user } = useAuth();
   const charts = showsChordCharts(user?.role);
+  const canEditNotes = user?.role === "admin" || user?.role === "song_leader" || user?.role === "musician" || user?.role === "singer";
   const [song, setSong] = useState<Song | null>(null);
   const [semi, setSemi] = useState(0);
   const [instrument, setInstrument] = useState<InstrumentType>("guitar");
@@ -135,6 +139,7 @@ function SongDetailInner() {
         <div className="flex flex-col gap-2 sm:items-end">
           <button
             type="button"
+            data-tour="song-favorite"
             onClick={toggleFavorite}
             className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-600"
           >
@@ -155,7 +160,10 @@ function SongDetailInner() {
       )}
 
       {charts && (
-        <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          data-tour="song-transpose"
+          className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Transpose</div>
             <div className="mt-1 text-lg font-semibold">Current key: {displayKey}</div>
@@ -186,6 +194,10 @@ function SongDetailInner() {
           </div>
         </div>
       )}
+
+      <InstrumentNotesPanel songId={song.id} instrument={instrument} canEdit={!!canEditNotes} />
+
+      {charts && <ClickTools songId={song.id} initialBpm={song.bpm} />}
 
       {charts && song.lyrics?.trim() && (
         <section className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
@@ -218,7 +230,7 @@ function SongDetailInner() {
       {charts && (
         <>
           <div className="flex gap-2 border-b border-zinc-200 dark:border-zinc-800">
-            {(["guitar", "bass", "keys"] as InstrumentType[]).map((t) => (
+            {(["guitar", "bass", "keys", "drums", "vocals"] as InstrumentType[]).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -256,6 +268,8 @@ function SongDetailInner() {
           </div>
         </>
       )}
+
+      <CommentsPanel entityType="song" entityId={song.id} />
     </div>
   );
 }
