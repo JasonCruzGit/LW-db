@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import type { Lineup, Song } from "@/lib/types";
+import { Tuner } from "@/components/Tuner";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -199,6 +200,8 @@ export default function DashboardPage() {
           </ul>
         </section>
       )}
+
+      {user.role === "musician" && <Tuner defaultPreset="guitar" />}
 
       <section data-tour="dashboard-recent">
         <div className="flex items-center justify-between gap-2">
