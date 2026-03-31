@@ -88,6 +88,8 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [hz, setHz] = useState<number | null>(null);
+  const [lockedNote, setLockedNote] = useState<{ midi: number; note: string; targetHz: number } | null>(null);
+  const [inTune, setInTune] = useState(false);
   const [confidence, setConfidence] = useState<number>(0);
   const [refHz, setRefHz] = useState<number>(440);
   const [refOn, setRefOn] = useState(false);
@@ -98,20 +100,40 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
   const rafRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const timeBufRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const hzHistRef = useRef<number[]>([]);
+  const emaRef = useRef<number | null>(null);
+  const stableNoteMsRef = useRef(0);
+  const inTuneMsRef = useRef(0);
+  const lastFrameRef = useRef<number>(0);
+  const confidenceRef = useRef(0);
+  const lockedMidiRef = useRef<number | null>(null);
 
   const meter = useMemo(() => {
     if (!hz) return null;
-    const midi = freqToMidi(hz);
+    const midi = lockedNote?.midi ?? freqToMidi(hz);
     const cents = centsOff(hz, midi);
-    const name = midiToName(midi);
+    const targetMidi = Math.round(midi);
+    const targetHz = lockedNote?.targetHz ?? midiToFreq(targetMidi);
+    const note = lockedNote?.note ?? (() => {
+      const name = midiToName(midi);
+      return `${name.name}${name.octave}`;
+    })();
     return {
       midi,
       cents: clamp(cents, -50, 50),
       displayCents: Math.round(cents),
-      note: `${name.name}${name.octave}`,
-      targetHz: midiToFreq(Math.round(midi)),
+      note,
+      targetHz,
     };
-  }, [hz]);
+  }, [hz, lockedNote]);
+
+  useEffect(() => {
+    confidenceRef.current = confidence;
+  }, [confidence]);
+
+  useEffect(() => {
+    lockedMidiRef.current = lockedNote?.midi ?? null;
+  }, [lockedNote]);
 
   async function ensureAC(): Promise<AudioContext> {
     if (acRef.current) return acRef.current;
@@ -142,6 +164,13 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
       src.connect(analyser);
       analyserRef.current = analyser;
       timeBufRef.current = new Float32Array(analyser.fftSize) as Float32Array<ArrayBuffer>;
+      hzHistRef.current = [];
+      emaRef.current = null;
+      stableNoteMsRef.current = 0;
+      inTuneMsRef.current = 0;
+      lastFrameRef.current = performance.now();
+      setLockedNote(null);
+      setInTune(false);
 
       setRunning(true);
     } catch (e: any) {
@@ -162,6 +191,10 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
     setRunning(false);
     setConfidence(0);
     setHz(null);
+    setLockedNote(null);
+    setInTune(false);
+    stableNoteMsRef.current = 0;
+    inTuneMsRef.current = 0;
   }
 
   function stopRefTone() {
@@ -208,14 +241,68 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
     if (!ac || !analyser || !buf) return;
 
     const loop = () => {
+      const nowMs = performance.now();
+      const dt = clamp(nowMs - (lastFrameRef.current || nowMs), 0, 50);
+      lastFrameRef.current = nowMs;
+
       analyser.getFloatTimeDomainData(buf);
       const pitch = detectPitchACF(buf, ac.sampleRate);
       if (!pitch) {
         setHz(null);
-        setConfidence((c) => Math.max(0, c - 0.06));
+        setConfidence((c) => {
+          const next = Math.max(0, c - 0.06);
+          confidenceRef.current = next;
+          return next;
+        });
+        setLockedNote(null);
+        setInTune(false);
+        stableNoteMsRef.current = 0;
+        inTuneMsRef.current = 0;
       } else {
-        setHz(pitch);
-        setConfidence((c) => Math.min(1, c + 0.12));
+        // Smooth: median of a short window + EMA to reduce jitter.
+        const hist = hzHistRef.current;
+        hist.push(pitch);
+        while (hist.length > 7) hist.shift();
+        const sorted = [...hist].sort((a, b) => a - b);
+        const med = sorted[Math.floor(sorted.length / 2)];
+
+        const alpha = 0.18;
+        const emaPrev = emaRef.current;
+        const ema = emaPrev == null ? med : emaPrev + alpha * (med - emaPrev);
+        emaRef.current = ema;
+        setHz(ema);
+        setConfidence((c) => {
+          const next = Math.min(1, c + 0.09);
+          confidenceRef.current = next;
+          return next;
+        });
+
+        const midi = freqToMidi(ema);
+        const targetMidi = Math.round(midi);
+        const { name, octave } = midiToName(midi);
+        const noteText = `${name}${octave}`;
+
+        // Note lock: require the same rounded midi for ~250ms.
+        const currentLocked = lockedMidiRef.current;
+        if (currentLocked === targetMidi) {
+          stableNoteMsRef.current += dt;
+        } else {
+          // If we changed target, reset stability timer.
+          stableNoteMsRef.current = dt;
+        }
+        const shouldLock = stableNoteMsRef.current >= 250 && confidenceRef.current >= 0.5;
+        if (shouldLock && currentLocked !== targetMidi) {
+          lockedMidiRef.current = targetMidi;
+          setLockedNote({ midi: targetMidi, note: noteText, targetHz: midiToFreq(targetMidi) });
+        }
+
+        // In-tune: within ±5 cents for ~300ms (when locked).
+        const cents = centsOff(ema, lockedMidiRef.current ?? targetMidi);
+        const windowCents = 5;
+        const ok = Math.abs(cents) <= windowCents && confidenceRef.current >= 0.6;
+        if (ok) inTuneMsRef.current += dt;
+        else inTuneMsRef.current = 0;
+        setInTune(inTuneMsRef.current >= 300);
       }
       rafRef.current = window.requestAnimationFrame(loop);
     };
@@ -345,6 +432,17 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
               {hz ? `${hz.toFixed(1)} Hz` : "No signal"}
               {meter ? ` · target ${meter.targetHz.toFixed(1)} Hz` : ""}
             </div>
+            {meter && (
+              <div className="mt-2">
+                {inTune ? (
+                  <span className="inline-flex items-center rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white">
+                    In tune
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-500">Hold steady to lock & confirm in tune.</span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="min-w-[220px] flex-1">
@@ -357,7 +455,7 @@ export function Tuner({ defaultPreset = "guitar" }: { defaultPreset?: Instrument
               <div className="absolute inset-0 opacity-40" />
               <div className="absolute left-1/2 top-0 h-3 w-0.5 -translate-x-1/2 bg-zinc-500/70" />
               <div
-                className="absolute top-0 h-3 w-1.5 rounded-full bg-emerald-600 shadow"
+                className="absolute top-0 h-3 w-1.5 rounded-full bg-emerald-600 shadow transition-[left,opacity] duration-150 ease-out"
                 style={{
                   left: meter ? `calc(50% + ${meter.cents}% )` : "50%",
                   transform: "translateX(-50%)",
