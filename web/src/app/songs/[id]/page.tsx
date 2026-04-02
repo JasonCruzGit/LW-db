@@ -195,6 +195,32 @@ function SongDetailInner() {
         </div>
       )}
 
+      {song.audioLinks && song.audioLinks.length > 0 && (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Audio links</h2>
+          <div className="mt-4 space-y-3">
+            {song.audioLinks.map((a) => (
+              <a
+                key={a.id}
+                href={a.url}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-xl border border-zinc-200 p-3 transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/40"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {(a.label && a.label.trim()) || a.url}
+                  </div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{a.platform}</div>
+                </div>
+                {a.notes?.trim() && <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{a.notes}</div>}
+                <div className="mt-2 text-xs text-zinc-500 break-all">{a.url}</div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       <InstrumentNotesPanel songId={song.id} instrument={instrument} canEdit={!!canEditNotes} />
 
       {charts && <ClickTools songId={song.id} initialBpm={song.bpm} />}
