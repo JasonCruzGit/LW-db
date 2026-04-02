@@ -214,6 +214,11 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (action === "close" || action === "skip" || action === "reset") return finishTour();
 
     if (type === "step:after") {
+      // Some Joyride flows don't emit a final FINISHED event reliably (especially with custom overlays).
+      // If the user advances from the last step, force cleanup.
+      if (action !== "prev" && typeof index === "number" && index >= steps.length - 1) {
+        return finishTour();
+      }
       const dir = action === "prev" ? -1 : 1;
       const target = clamp(index + dir, 0, steps.length - 1);
       const targetStep = steps[target];
