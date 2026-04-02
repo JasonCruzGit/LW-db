@@ -143,12 +143,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [startHint, setStartHint] = useState(false);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (run) document.body.classList.add("wts-tour-active");
     else document.body.classList.remove("wts-tour-active");
     return () => document.body.classList.remove("wts-tour-active");
+  }, [run]);
+
+  useEffect(() => {
+    if (!run) {
+      setStartHint(false);
+      return;
+    }
+    // Brief nudge so users know what to do.
+    setStartHint(true);
+    const t = window.setTimeout(() => setStartHint(false), 3500);
+    return () => window.clearTimeout(t);
   }, [run]);
 
   useEffect(() => {
@@ -225,6 +237,13 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   return (
     <>
       {run && <div className="fixed inset-0 z-40 bg-black/75" aria-hidden />}
+      {run && startHint && (
+        <div className="pointer-events-none fixed left-1/2 top-4 z-[60] -translate-x-1/2">
+          <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-zinc-900 shadow-lg ring-1 ring-black/10">
+            Click <span className="font-semibold">Next</span> to start the tour
+          </div>
+        </div>
+      )}
       <Joyride
         steps={steps}
         run={run}
