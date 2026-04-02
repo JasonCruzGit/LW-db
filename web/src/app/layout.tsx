@@ -14,14 +14,14 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LW Worship Team Database",
+  title: "LW Worship Song Library",
   description: "Song library, lineups, and chord charts for worship teams",
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/favicon.svg", type: "image/svg+xml" }],
   },
-  appleWebApp: { capable: true, title: "LW Worship Team App" },
+  appleWebApp: { capable: true, title: "LW Worship Song Library" },
 };
 
 export const viewport: Viewport = {

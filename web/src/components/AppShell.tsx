@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <Link href="/" className="font-semibold tracking-tight text-zinc-900 dark:text-white">
-            LW Worship Team App
+            LW Worship Song Library
           </Link>
           <nav className={clsx("flex-1 items-center justify-center gap-1", tourActive ? "flex" : "hidden md:flex")}>
             {links.map((l) => (
