@@ -200,14 +200,17 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setRun(true);
   }
 
+  function finishTour() {
+    if (typeof window !== "undefined") localStorage.setItem(TOUR_KEY, "1");
+    setRun(false);
+    setStepIndex(0);
+  }
+
   function handleEvent(data: any) {
     const { status, type, index, action } = data ?? {};
 
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-      if (typeof window !== "undefined") localStorage.setItem(TOUR_KEY, "1");
-      setRun(false);
-      return;
-    }
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) return finishTour();
+    if (type === "tour:end" || type === "tour:close") return finishTour();
 
     if (type === "step:after") {
       const dir = action === "prev" ? -1 : 1;
