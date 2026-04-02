@@ -240,7 +240,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       {run && startHint && (
         <div className="pointer-events-none fixed left-1/2 top-4 z-[60] -translate-x-1/2">
           <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-zinc-900 shadow-lg ring-1 ring-black/10">
-            Click <span className="font-semibold">Next</span> to start the tour
+            Click <span className="font-semibold">Dashboard</span> to start the tour
           </div>
         </div>
       )}
