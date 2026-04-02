@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ChordSection, InstrumentType, Song } from "@/lib/types";
+import type { AudioPlatform, ChordSection, InstrumentType, Song } from "@/lib/types";
 
 const SECTIONS: ChordSection[] = ["verse", "chorus", "bridge", "outro"];
 const INSTRUMENTS: InstrumentType[] = ["guitar", "bass", "keys", "drums", "vocals"];
@@ -16,6 +16,7 @@ export type SongFormState = {
   lyrics: string;
   tags: string;
   chordSheets: { section: ChordSection; instrumentType: InstrumentType; lyricsWithChords: string }[];
+  audioLinks: { platform: AudioPlatform; url: string; label: string; notes: string }[];
 };
 
 export function songToFormState(s: Song): SongFormState {
@@ -34,6 +35,13 @@ export function songToFormState(s: Song): SongFormState {
         instrumentType: c.instrumentType,
         lyricsWithChords: c.lyricsWithChords,
       })) ?? [],
+    audioLinks:
+      s.audioLinks?.map((a) => ({
+        platform: a.platform,
+        url: a.url,
+        label: a.label ?? "",
+        notes: a.notes ?? "",
+      })) ?? [],
   };
 }
 
@@ -48,6 +56,7 @@ export function emptySongForm(): SongFormState {
     lyrics: "",
     tags: "",
     chordSheets: [],
+    audioLinks: [],
   };
 }
 
@@ -88,6 +97,22 @@ export function SongForm({
 
   function removeSheet(i: number) {
     patch({ chordSheets: value.chordSheets.filter((_, j) => j !== i) });
+  }
+
+  function addAudioLink() {
+    patch({
+      audioLinks: [...value.audioLinks, { platform: "youtube", url: "", label: "", notes: "" }],
+    });
+  }
+
+  function updateAudioLink(i: number, p: Partial<SongFormState["audioLinks"][number]>) {
+    const next = [...value.audioLinks];
+    next[i] = { ...next[i], ...p };
+    patch({ audioLinks: next });
+  }
+
+  function removeAudioLink(i: number) {
+    patch({ audioLinks: value.audioLinks.filter((_, j) => j !== i) });
   }
 
   return (
@@ -172,6 +197,77 @@ export function SongForm({
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Audio links</h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Add multiple versions (YouTube, Spotify, etc.).</p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm text-white dark:bg-white dark:text-zinc-900"
+            onClick={addAudioLink}
+          >
+            Add link
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {value.audioLinks.length === 0 && <p className="text-sm text-zinc-500">No audio links yet.</p>}
+          {value.audioLinks.map((a, i) => (
+            <div key={i} className="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="select-field px-2 py-1.5 pr-8"
+                    value={a.platform}
+                    onChange={(e) => updateAudioLink(i, { platform: e.target.value as AudioPlatform })}
+                  >
+                    <option value="youtube">youtube</option>
+                    <option value="spotify">spotify</option>
+                    <option value="other">other</option>
+                  </select>
+                  <div className="text-xs font-semibold uppercase text-zinc-500">Link {i + 1}</div>
+                </div>
+                <button type="button" className="text-xs text-red-600 hover:underline" onClick={() => removeAudioLink(i)}>
+                  Remove
+                </button>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-medium uppercase text-zinc-500 sm:col-span-2">
+                  URL
+                  <input
+                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                    value={a.url}
+                    onChange={(e) => updateAudioLink(i, { url: e.target.value })}
+                    placeholder="https://…"
+                  />
+                </label>
+                <label className="text-xs font-medium uppercase text-zinc-500">
+                  Label (optional)
+                  <input
+                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                    value={a.label}
+                    onChange={(e) => updateAudioLink(i, { label: e.target.value })}
+                    placeholder="Studio version / Live / Click track…"
+                  />
+                </label>
+                <label className="text-xs font-medium uppercase text-zinc-500">
+                  Notes (optional)
+                  <input
+                    className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                    value={a.notes}
+                    onChange={(e) => updateAudioLink(i, { notes: e.target.value })}
+                    placeholder="e.g. starts at 0:22"
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/40">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Chord sheets</h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Add one block per section and instrument. Use [C] [G] style chords inline with lyrics.
@@ -252,5 +348,13 @@ export function formStateToPayload(state: SongFormState) {
       .map((t) => t.trim())
       .filter(Boolean),
     chordSheets: state.chordSheets.filter((c) => c.lyricsWithChords.trim()),
+    audioLinks: state.audioLinks
+      .map((a) => ({
+        platform: a.platform,
+        url: a.url.trim(),
+        label: a.label.trim() || null,
+        notes: a.notes.trim() || null,
+      }))
+      .filter((a) => a.url),
   };
 }

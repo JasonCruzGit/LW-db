@@ -10,6 +10,13 @@ const chordSheetInput = z.object({
   instrumentType: z.enum(["guitar", "bass", "keys", "drums", "vocals"]),
 });
 
+const audioLinkInput = z.object({
+  platform: z.enum(["youtube", "spotify", "other"]),
+  url: z.string().min(1),
+  label: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 const createSongSchema = z.object({
   title: z.string().min(1),
   artist: z.string().min(1),
@@ -20,6 +27,7 @@ const createSongSchema = z.object({
   lyrics: z.string().optional().nullable(),
   tags: z.array(z.string()).default([]),
   chordSheets: z.array(chordSheetInput).default([]),
+  audioLinks: z.array(audioLinkInput).default([]),
 });
 
 const updateSongSchema = createSongSchema.partial();
@@ -81,7 +89,7 @@ export async function POST(req: NextRequest) {
   const parsed = createSongSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { chordSheets, ...rest } = parsed.data;
+  const { chordSheets, audioLinks, ...rest } = parsed.data;
   const song = await prisma.song.create({
     data: {
       ...rest,
@@ -92,8 +100,20 @@ export async function POST(req: NextRequest) {
           instrumentType: c.instrumentType,
         })),
       },
+      ...(audioLinks.length
+        ? {
+            audioLinks: {
+              create: audioLinks.map((a) => ({
+                platform: a.platform,
+                url: a.url,
+                label: a.label ?? null,
+                notes: a.notes ?? null,
+              })),
+            },
+          }
+        : {}),
     },
-    include: { chordSheets: true },
+    include: { chordSheets: true, audioLinks: { orderBy: { createdAt: "desc" } } },
   });
   return NextResponse.json(song, { status: 201 });
 }
