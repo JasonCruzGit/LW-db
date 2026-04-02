@@ -9,6 +9,10 @@ type RoutedStep = Step & { route?: string };
 
 const TOUR_KEY = "wts_tour_v1_done";
 
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
 function useTourSteps(): RoutedStep[] {
   const { user } = useAuth();
 
@@ -191,7 +195,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }
 
   function handleEvent(data: any) {
-    const { status, type, index } = data ?? {};
+    const { status, type, index, action } = data ?? {};
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       if (typeof window !== "undefined") localStorage.setItem(TOUR_KEY, "1");
@@ -200,22 +204,23 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (type === "step:after") {
-      const next = index + 1;
-      const nextStep = steps[next];
-      if (nextStep?.route) {
+      const dir = action === "prev" ? -1 : 1;
+      const target = clamp(index + dir, 0, steps.length - 1);
+      const targetStep = steps[target];
+
+      if (targetStep?.route) {
         const current = normalizeRoute(pathname);
-        if (nextStep.route !== current) {
-          router.push(nextStep.route === "/songs/[id]" ? "/songs" : nextStep.route);
+        if (targetStep.route !== current) {
+          router.push(targetStep.route === "/songs/[id]" ? "/songs" : targetStep.route);
           // If this step wants a specific song detail page, we can't guess which song;
           // so we route to /songs and the user can click any song, then tour continues.
-          if (nextStep.route === "/songs/[id]") {
-            // We'll advance once user is on a song detail page.
-            setStepIndex(next);
+          if (targetStep.route === "/songs/[id]") {
+            setStepIndex(target);
             return;
           }
         }
       }
-      setStepIndex(next);
+      setStepIndex(target);
     }
 
     if (type === "error:target_not_found") {
