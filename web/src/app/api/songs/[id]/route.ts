@@ -9,6 +9,13 @@ const chordSheetInput = z.object({
   instrumentType: z.enum(["guitar", "bass", "keys", "drums", "vocals"]),
 });
 
+const audioLinkInput = z.object({
+  platform: z.enum(["youtube", "spotify", "other"]),
+  url: z.string().min(1),
+  label: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 const updateSongSchema = z
   .object({
     title: z.string().min(1).optional(),
@@ -20,6 +27,7 @@ const updateSongSchema = z
     lyrics: z.string().optional().nullable(),
     tags: z.array(z.string()).optional(),
     chordSheets: z.array(chordSheetInput).optional(),
+    audioLinks: z.array(audioLinkInput).optional(),
   })
   .strict();
 
@@ -49,12 +57,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const data = parsed.data;
   const chordSheets = data.chordSheets;
-  const { chordSheets: _cs, ...rest } = data;
+  const audioLinks = data.audioLinks;
+  const { chordSheets: _cs, audioLinks: _al, ...rest } = data;
 
   try {
     const song = await prisma.$transaction(async (tx) => {
       if (chordSheets) {
         await tx.chordSheet.deleteMany({ where: { songId: id } });
+      }
+      if (audioLinks) {
+        await tx.audioLink.deleteMany({ where: { songId: id } });
       }
       return tx.song.update({
         where: { id },
@@ -71,8 +83,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
                 },
               }
             : {}),
+          ...(audioLinks
+            ? {
+                audioLinks: {
+                  create: audioLinks.map((a) => ({
+                    platform: a.platform,
+                    url: a.url,
+                    label: a.label ?? null,
+                    notes: a.notes ?? null,
+                  })),
+                },
+              }
+            : {}),
         },
-        include: { chordSheets: true },
+        include: { chordSheets: true, audioLinks: { orderBy: { createdAt: "desc" } } },
       });
     });
     return NextResponse.json(song);
