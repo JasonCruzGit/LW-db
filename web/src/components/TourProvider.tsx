@@ -211,6 +211,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) return finishTour();
     if (type === "tour:end" || type === "tour:close") return finishTour();
+    if (action === "close" || action === "skip" || action === "reset") return finishTour();
 
     if (type === "step:after") {
       const dir = action === "prev" ? -1 : 1;
