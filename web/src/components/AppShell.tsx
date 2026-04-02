@@ -86,7 +86,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-dvh bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="sticky top-0 z-20 border-b border-zinc-200/80 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <Link href="/" className="font-semibold tracking-tight text-zinc-900 dark:text-white">
+          <Link
+            href="/"
+            className="min-w-0 max-w-[52vw] truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-white sm:max-w-none sm:text-lg"
+            title="LW Worship Song Library"
+          >
             LW Worship Song Library
           </Link>
           <nav className={clsx("flex-1 items-center justify-center gap-1", tourActive ? "flex" : "hidden md:flex")}>
@@ -113,12 +117,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {user && (
               <button
                 type="button"
                 data-tour="tour-help"
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="whitespace-nowrap rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 sm:px-3 sm:text-sm"
                 onClick={() => window.dispatchEvent(new Event("wts:start-tour"))}
               >
                 Tour
@@ -131,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   data-tour="logout"
-                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-700"
+                  className="whitespace-nowrap rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium dark:border-zinc-700 sm:px-3 sm:text-sm"
                   onClick={() => logout()}
                 >
                   Log out
@@ -140,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : (
               <Link
                 href="/login"
-                className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
+                className="whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900 sm:px-3 sm:text-sm"
               >
                 Log in
               </Link>
