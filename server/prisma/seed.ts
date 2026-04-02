@@ -4,15 +4,11 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  if ((await prisma.song.count()) > 0) {
-    console.log("Database already has songs — skipping seed.");
-    return;
-  }
-
+/** Always ensure demo users exist (login 401 if DB has songs but seed was skipped). */
+async function seedUsers() {
   const passwordHash = await bcrypt.hash("password123", 10);
 
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@church.local" },
     update: {},
     create: {
@@ -55,6 +51,15 @@ async function main() {
       role: "singer",
     },
   });
+
+  return leader;
+}
+
+async function seedSongsAndLineup(leaderId: string) {
+  if ((await prisma.song.count()) > 0) {
+    console.log("Database already has songs — skipping demo songs/lineup.");
+    return;
+  }
 
   const song1 = await prisma.song.upsert({
     where: { id: "seed-song-1" },
@@ -145,32 +150,26 @@ async function main() {
     create: {
       id: "seed-lineup-1",
       serviceDate: nextSunday,
-      createdById: leader.id,
+      createdById: leaderId,
       status: "published",
       publishedAt: new Date(),
       songs: {
         create: [
-          {
-            songId: song1.id,
-            order: 0,
-            selectedKey: "G",
-            notes: "Acoustic intro, 2 bars",
-          },
-          {
-            songId: song2.id,
-            order: 1,
-            selectedKey: "Bb",
-            notes: "Capo 3 to match recording; repeat chorus 2x at end",
-          },
+          { songId: song1.id, order: 0, selectedKey: "G", notes: "Acoustic intro, 2 bars" },
+          { songId: song2.id, order: 1, selectedKey: "Bb", notes: "Capo 3 to match recording; repeat chorus 2x at end" },
         ],
       },
     },
   });
 
-  console.log(
-    "Seed OK — users: admin@church.local, leader@church.local, musician@church.local, singer@church.local / password123"
-  );
-  console.log("Sample songs:", song1.title, song2.title);
+  console.log("Seed OK — demo songs + lineup created.", song1.title, song2.title);
+}
+
+async function main() {
+  const leader = await seedUsers();
+  console.log("Users OK — admin@church.local, leader@church.local, musician@church.local, singer@church.local / password123");
+
+  await seedSongsAndLineup(leader.id);
 }
 
 main()

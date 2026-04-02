@@ -40,7 +40,7 @@ export default function LoginPage() {
     setError(null);
     setPending(true);
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       // Full navigation avoids stale RSC chunks / HMR WebSocket issues after auth.
       window.location.assign("/");
     } catch (err: unknown) {
