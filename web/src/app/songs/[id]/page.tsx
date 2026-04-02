@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChordLines } from "@/components/ChordLines";
 import { Protected } from "@/components/Protected";
@@ -28,6 +28,8 @@ export default function SongDetailPage() {
 function SongDetailInner() {
   const params = useParams();
   const id = String(params.id);
+  const router = useRouter();
+  const search = useSearchParams();
   const { user } = useAuth();
   const charts = showsChordCharts(user?.role);
   const canEditNotes = user?.role === "admin" || user?.role === "song_leader" || user?.role === "musician" || user?.role === "singer";
@@ -35,6 +37,7 @@ function SongDetailInner() {
   const [semi, setSemi] = useState(0);
   const [instrument, setInstrument] = useState<InstrumentType>("guitar");
   const [fav, setFav] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,6 +54,16 @@ function SongDetailInner() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    const created = search.get("created");
+    if (created !== "1") return;
+    setToast("Song saved.");
+    const t = window.setTimeout(() => setToast(null), 1800);
+    // Remove the query param so it doesn't show again on refresh.
+    router.replace(`/songs/${id}`);
+    return () => window.clearTimeout(t);
+  }, [search, router, id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +126,13 @@ function SongDetailInner() {
 
   return (
     <div className="space-y-8">
+      {toast && (
+        <div className="sticky top-3 z-30">
+          <div className="mx-auto w-fit rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg">
+            {toast}
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Link href="/songs" className="text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">

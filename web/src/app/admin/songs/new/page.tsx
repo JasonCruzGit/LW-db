@@ -26,7 +26,7 @@ function NewSongInner() {
     setMsg(null);
     try {
       const song = await api.songs.create(formStateToPayload(state));
-      router.push(`/songs/${song.id}`);
+      router.push(`/songs/${song.id}?created=1`);
     } catch {
       setMsg("Could not save song.");
     } finally {
