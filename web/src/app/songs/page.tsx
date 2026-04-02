@@ -33,6 +33,7 @@ function SongsInner() {
     tags: "",
     sort: "recent",
   });
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [meta, setMeta] = useState<{ keys: string[]; tags: string[]; bpmMin: number; bpmMax: number } | null>(
     null
   );
@@ -45,16 +46,21 @@ function SongsInner() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQ(filters.q), 250);
+    return () => window.clearTimeout(t);
+  }, [filters.q]);
+
   const params = useMemo(
     () => ({
-      q: filters.q || undefined,
+      q: debouncedQ || undefined,
       key: filters.key || undefined,
       bpmMin: filters.bpmMin || undefined,
       bpmMax: filters.bpmMax || undefined,
       tags: filters.tags || undefined,
       sort: filters.sort || undefined,
     }),
-    [filters]
+    [filters.key, filters.bpmMin, filters.bpmMax, filters.tags, filters.sort, debouncedQ]
   );
 
   useEffect(() => {

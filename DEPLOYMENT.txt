@@ -9,7 +9,9 @@ LW-app production checklist
    DIRECT_URL — direct connection (migrations / Prisma):
    postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
 
-   The API code appends sslmode=require and (for :6543) pgbouncer=true + connection_limit=1 automatically.
+   The API code appends sslmode=require and (for :6543) pgbouncer=true automatically.
+   For Vercel/Serverless, set `connection_limit` to a small number like **5** (not 1) and optionally `pool_timeout=30`
+   to avoid Prisma P2024 timeouts under concurrent requests.
    If login still fails, switch DATABASE_URL to port 6543 — Prisma + Supabase session pooler :5432 is unreliable from some hosts.
 
 2) One-time schema (local machine, server/.env filled)
