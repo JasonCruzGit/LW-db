@@ -2,7 +2,7 @@
 
 import { Joyride, STATUS, type Step } from "react-joyride";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useEffect, useMemo, useState, useContext } from "react";
 import { useAuth } from "@/contexts/auth-context";
 
 type RoutedStep = Step & { route?: string };
@@ -11,6 +11,12 @@ const TOUR_KEY = "wts_tour_v1_done";
 
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
+}
+
+const TourActiveContext = createContext(false);
+
+export function useTourActive() {
+  return useContext(TourActiveContext);
 }
 
 function useTourSteps(): RoutedStep[] {
@@ -240,7 +246,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <>
+    <TourActiveContext.Provider value={run}>
       {run && <div className="fixed inset-0 z-40 bg-black/75" aria-hidden />}
       {run && startHint && (
         <div className="pointer-events-none fixed left-1/2 top-4 z-[60] -translate-x-1/2">
@@ -277,7 +283,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       <div className={run ? "pointer-events-none select-none" : undefined} aria-hidden={run ? true : undefined}>
         {children}
       </div>
-    </>
+    </TourActiveContext.Provider>
   );
 }
 

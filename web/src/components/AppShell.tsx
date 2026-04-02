@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/auth-context";
 import clsx from "clsx";
 import { api } from "@/lib/api";
 import { useState } from "react";
+import { useTourActive } from "@/components/TourProvider";
 
 function ThemeToggle() {
   return (
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [unreadMentions, setUnreadMentions] = useState<number>(0);
+  const tourActive = useTourActive();
 
   useEffect(() => {
     const stored = localStorage.getItem("wts_theme");
@@ -87,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="font-semibold tracking-tight text-zinc-900 dark:text-white">
             LW Worship Team App
           </Link>
-          <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+          <nav className={clsx("flex-1 items-center justify-center gap-1", tourActive ? "flex" : "hidden md:flex")}>
             {links.map((l) => (
               <Link
                 key={l.href}
