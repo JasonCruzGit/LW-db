@@ -10,6 +10,10 @@ body {
   @apply antialiased;
 }
 
+body.wts-tour-active {
+  overflow: hidden;
+}
+
 /* Native <select>: match text inputs (flat) instead of OS gradient / pill styling */
 @layer components {
   .select-field {

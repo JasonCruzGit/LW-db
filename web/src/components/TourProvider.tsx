@@ -145,6 +145,13 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (run) document.body.classList.add("wts-tour-active");
+    else document.body.classList.remove("wts-tour-active");
+    return () => document.body.classList.remove("wts-tour-active");
+  }, [run]);
+
+  useEffect(() => {
     if (loading) return;
     // Only start once we know auth state (or demo mode has logged in).
     if (!user) return;
@@ -217,6 +224,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {run && <div className="fixed inset-0 z-40 bg-black/75" aria-hidden />}
       <Joyride
         steps={steps}
         run={run}
@@ -236,13 +244,15 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           textColor: "#0a0a0a",
           arrowColor: "#ffffff",
           backgroundColor: "#ffffff",
-          overlayColor: "rgba(0,0,0,0.55)",
+          overlayColor: "rgba(0,0,0,0.80)",
           overlayClickAction: false,
           buttons: ["skip", "back", "primary", "close"],
           showProgress: true,
         }}
       />
-      {children}
+      <div className={run ? "pointer-events-none select-none" : undefined} aria-hidden={run ? true : undefined}>
+        {children}
+      </div>
     </>
   );
 }
