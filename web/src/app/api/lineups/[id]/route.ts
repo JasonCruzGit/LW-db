@@ -43,7 +43,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     where: { id },
     include: {
       createdBy: { select: { id: true, name: true, email: true } },
-      songs: { orderBy: { order: "asc" }, include: { song: { include: { chordSheets: true } } } },
+      songs: {
+        orderBy: { order: "asc" },
+        include: {
+          song: {
+            include: {
+              chordSheets: true,
+              audioLinks: { take: 1, orderBy: { createdAt: "desc" } },
+            },
+          },
+        },
+      },
     },
   });
   if (!lineup) return NextResponse.json({ error: "Lineup not found" }, { status: 404 });
@@ -102,7 +112,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     data,
     include: {
       createdBy: { select: { id: true, name: true, email: true } },
-      songs: { orderBy: { order: "asc" }, include: { song: { include: { chordSheets: true } } } },
+      songs: {
+        orderBy: { order: "asc" },
+        include: {
+          song: {
+            include: {
+              chordSheets: true,
+              audioLinks: { take: 1, orderBy: { createdAt: "desc" } },
+            },
+          },
+        },
+      },
     },
   });
   return NextResponse.json(lineup);
